@@ -1,42 +1,33 @@
-# File: hydroponic-controller/main.py
+# File: data/logger.py
 
-import time
-import RPi.GPIO as GPIO
+import os
+import datetime
 
-from data.logger import init_logger, log_event
-from pumps.pumps import (
-    init_pumps,
-    pump_on,
-    pump_off,
-    dose_pump
-)
+EVENT_LOGFILE = "hydro_events.csv"
+SENSOR_LOGFILE = "sensor_data.csv"
 
-def main():
-    # 1. Initialize logging and pumps
-    init_logger()   # Ensure 'hydro_events.csv' has header
-    init_pumps()    # Setup all pump GPIO pins
+def init_logger():
+    """
+    Initialize event and sensor CSVs if they don't exist.
+    """
+    if not os.path.isfile(EVENT_LOGFILE):
+        with open(EVENT_LOGFILE, "w", encoding="utf-8") as f:
+            f.write("timestamp,event,details\n")
 
-    try:
-        # 2. Turn on pH_up pump for 2 seconds
-        log_event("pump_on", "pH_up")
-        pump_on("pH_up")
-        time.sleep(2)
+    if not os.path.isfile(SENSOR_LOGFILE):
+        with open(SENSOR_LOGFILE, "w", encoding="utf-8") as f:
+            f.write("timestamp,sensor_name,value\n")
 
-        log_event("pump_off", "pH_up")
-        pump_off("pH_up")
-        time.sleep(1)
+def log_event(event, details=""):
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(EVENT_LOGFILE, "a", encoding="utf-8") as f:
+        f.write(f"{now_str},{event},{details}\n")
 
-        # 3. Demonstrate dose_pump usage for nutrientA
-        log_event("pump_dose", "nutrientA for 3s")
-        dose_pump("nutrientA", 3)
-        # dose_pump calls pump_on + time.sleep + pump_off internally
+def log_sensor(sensor_name, value):
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(SENSOR_LOGFILE, "a", encoding="utf-8") as f:
+        f.write(f"{now_str},{sensor_name},{value}\n")
 
-        print("Test complete. Check 'hydro_events.csv' for logs.")
-
-    except KeyboardInterrupt:
-        print("Interrupted by user.")
-    finally:
-        GPIO.cleanup()  # Release GPIO pins
 
 if __name__ == "__main__":
     main()
