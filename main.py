@@ -1,50 +1,42 @@
-#!/usr/bin/env python3
+from sensors.ph_sensor import read_ph
+from sensors.ec_sensor import read_ec
+from controller.dosing_logic import simple_ph_control, simple_ec_control
+from data.logger import log_sensor, log_event
+from pumps.pumps import init_pumps
+
 import time
 import RPi.GPIO as GPIO
 
-from data.logger import init_logger, log_event, log_sensor
-from pumps.pumps import init_pumps, pump_on, pump_off
-from sensors.ph_sensor import read_ph
-from sensors.ec_sensor import read_ec
-
 def main():
-    # 1. Initialize logs and pump pins
-    init_logger()       # ensures the CSV files exist with headers
-    init_pumps()        # configure GPIO for all five pumps
+    init_pumps()
 
     try:
-        # 2. Quick test of all five pumps
-        pump_names = ["pH_up", "pH_down", "nutrientA", "nutrientB", "nutrientC"]
-        for pump in pump_names:
-            # Log that we are turning this pump on
-            log_event("pump_on", pump)
-            print(f"Turning ON {pump} for 2s...")
-            pump_on(pump)
-            time.sleep(2)
+        # Example: run multiple cycles, so you see the pumps actually spin in real life
+        for i in range(3):
+            # 1. Mock sensor reads
+            pH_val = read_ph()  # returns 5.2
+            ec_val = read_ec()  # returns 0.8
 
-            # Now turn it off
-            log_event("pump_off", pump)
-            print(f"Turning OFF {pump}...")
-            pump_off(pump)
-            time.sleep(1)
-
-        # 3. Read & log sensor data (pH, EC)
-        ph_val = read_ph()
-        ec_val = read_ec()
-        log_sensor("pH", ph_val)
-        log_sensor("EC", ec_val)
-        print(f"Sensor readings: pH={ph_val}, EC={ec_val}")
-
-        print("All pump tests complete. Sensor data logged. Check CSV files.")
+            # 2. Log them (optional)
+            log_sensor("pH", pH_val)
+            log_sensor("EC", ec_val)
+            
+            # 3. Pass these fake readings into your logic
+            ph_status = simple_ph_control(pH_val)
+            if "Dosed" in ph_status:
+                log_event("ph_control", ph_status)
+            
+            ec_status = simple_ec_control(ec_val)
+            if "Dosed" in ec_status:
+                log_event("ec_control", ec_status)
+            
+            # 4. Wait a bit before the next cycle
+            time.sleep(10)
 
     except KeyboardInterrupt:
         print("Interrupted by user.")
     finally:
         GPIO.cleanup()
-
-if __name__ == "__main__":
-    main()
-
 
 if __name__ == "__main__":
     main()
