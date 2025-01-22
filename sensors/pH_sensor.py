@@ -1,5 +1,12 @@
-# ph_sensor.py
+# File: sensors/ph_sensor.py
+
+import random
+
 def read_ph():
-    # TODO: integrate real hardware code.
-    # For now, return a dummy value, or randomly fluctuate.
-    return 6.3
+    """
+    Mock function for testing.
+    Replace with real sensor code or library calls.
+    Return a float representing the pH reading.
+    """
+    # Return a random value in a typical pH range
+    return round(random.uniform(5.5, 6.5), 2)
