@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for
 import csv
 import os
 import json
+import datetime
 
 # GPIO and Pump system
 from pumps.pumps import init_pumps, dose_pump
@@ -57,7 +58,7 @@ def index():
     if os.path.exists(csv_path):
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.reader(f)
-            next(reader, None) # skip header
+            next(reader, None)  # skip header
             for row in reader:
                 sensor_rows.append(row)
 
@@ -66,7 +67,7 @@ def index():
 @app.route("/events")
 def events():
     """
-    Show hydro_events.csv logs.
+    Show hydro_events.csv logs (raw list).
     """
     event_rows = []
     csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
@@ -134,13 +135,60 @@ def auto_dosing_test():
     ph_status = simple_ph_control(pH_val, GLOBAL_CONFIG["ph_min"], GLOBAL_CONFIG["ph_max"])
     ec_status = simple_ec_control(ec_val, GLOBAL_CONFIG["ec_min"])
 
-    # if "Dosed" in ph_status: log_event("auto_ph", ph_status)
-    # if "Dosed" in ec_status: log_event("auto_ec", ec_status)
-    # or log them always:
+    # Always log the results
     log_event("auto_ph", ph_status)
     log_event("auto_ec", ec_status)
 
     return f"Ran auto dosing. pH={pH_val}, ec={ec_val}. <br> {ph_status} <br> {ec_status}"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# ---------------------------------------------------------------------
+# NEW: AGGREGATION & SUMMARY VIEW
+# ---------------------------------------------------------------------
+def aggregate_event_data():
+    """
+    Reads hydro_events.csv, aggregates daily usage (in seconds) by pump.
+    Returns a dict like:
+      {
+        "2025-04-10": {"pH_up": 4.0, "pH_down": 2.0, "nutrientA":5.0, ...},
+        "2025-04-11": {"pH_up": 6.0, "pH_down": 0.0, "nutrientA":2.0, ...},
+      }
+    We'll parse lines like:
+      Timestamp,Event,Details
+      2025-04-10 14:05:00,manual_dose,"pH_up for 2s"
+    We'll extract date from the timestamp, parse "pH_up" and "2s" -> 2.0
+    If no "for Xs" found, default to 1.0 seconds or something minimal.
+    """
+
+    csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
+    if not os.path.exists(csv_path):
+        return {}
+
+    aggregator = {}  # {date_str: {pump_name: total_seconds}}
+
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader, None)  # skip the header row
+        for row in reader:
+            if len(row) < 3:
+                continue
+            timestamp_str, event_type, details = row
+
+            # date_str = "YYYY-MM-DD"
+            date_str = timestamp_str.split(" ")[0]
+
+            # parse pump_name and seconds from details
+            pump_name = None
+            usage_seconds = 0.0
+
+            parts = details.split()
+            # e.g. ["pH_up", "for", "2s"] or just ["pH_up"]
+            if len(parts) == 3 and parts[1] == "for" and parts[2].endswith("s"):
+                pump_name = parts[0]
+                sec_str = parts[2].replace("s","")
+                try:
+                    usage_seconds = float(sec_str)
+                except ValueError:
+                    usage_seconds = 1.0
+            else:
+                # fallback: maybe the entire details is the pump name
+               
