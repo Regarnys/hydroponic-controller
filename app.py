@@ -191,4 +191,50 @@ def aggregate_event_data():
                     usage_seconds = 1.0
             else:
                 # fallback: maybe the entire details is the pump name
+                pump_name = details
+                usage_seconds = 1.0
+
+            # store in aggregator
+            if date_str not in aggregator:
+                aggregator[date_str] = {}
+            if pump_name not in aggregator[date_str]:
+                aggregator[date_str][pump_name] = 0.0
+
+            aggregator[date_str][pump_name] += usage_seconds
+
+    return aggregator
+
+@app.route("/events_summary")
+def events_summary():
+    """
+    Use aggregate_event_data() to produce daily usage data,
+    pass to a new template for a table or stacked bar chart.
+    """
+    data_by_date = aggregate_event_data()
+
+    # Gather all unique pumps
+    all_pumps = set()
+    for date_str, usage_dict in data_by_date.items():
+        for pump in usage_dict.keys():
+            all_pumps.add(pump)
+    all_pumps = sorted(all_pumps)
+
+    # Convert dict to a list so we can easily loop in Jinja
+    # e.g. [ {date: "2025-04-10", usage: {"pH_up": 4, "pH_down":2}}, ... ]
+    aggregated_list = []
+    for date_str in sorted(data_by_date.keys()):
+        aggregated_list.append({
+            "date": date_str,
+            "usage": data_by_date[date_str]
+        })
+
+    return render_template("events_summary.html",
+                           all_pumps=all_pumps,
+                           aggregated_data=aggregated_list)
+
+# ---------------------------------------------------------------------
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
                
