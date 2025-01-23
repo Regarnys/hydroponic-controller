@@ -1,0 +1,19 @@
+/* File: static/css/style.css */
+
+body {
+  font-family: sans-serif;
+  margin: 20px;
+}
+
+table {
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  padding: 8px 12px;
+}
+
+h1 {
+  color: green;
+}

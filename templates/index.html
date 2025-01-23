@@ -1,0 +1,120 @@
+<!-- File: templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hydroponic Dashboard</title>
+  <!-- Link your stylesheet if needed -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- Pull Chart.js from a CDN (version 3.x) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Hydroponic Data</h1>
+
+  <!-- =========================
+       TABLE OF RAW DATA
+  ========================== -->
+  <h2>Raw Sensor Table</h2>
+  <table border="1">
+    <tr>
+      <th>Timestamp</th>
+      <th>Sensor</th>
+      <th>Value</th>
+    </tr>
+    {% for row in sensor_data %}
+      <tr>
+        <td>{{ row[0] }}</td>  <!-- timestamp -->
+        <td>{{ row[1] }}</td>  <!-- sensor_name -->
+        <td>{{ row[2] }}</td>  <!-- value -->
+      </tr>
+    {% endfor %}
+  </table>
+
+  <!-- =========================
+       CHARTS SECTION
+  ========================== -->
+  <h2>pH Over Time</h2>
+  <canvas id="phChart" width="600" height="300"></canvas>
+
+  <h2>EC Over Time</h2>
+  <canvas id="ecChart" width="600" height="300"></canvas>
+
+  <script>
+    // Convert the Python sensor_data list into a JS array
+    // sensor_data = [ [timestamp, sensor_name, value], ... ]
+    let sensorData = {{ sensor_data|tojson }};
+
+    // Filter out pH rows and parse them
+    let phData = sensorData.filter(r => r[1] === "pH");
+    // We assume r[0] is a string timestamp, r[2] is a numeric string
+    let phLabels = phData.map(r => r[0]);        // x-axis (timestamps)
+    let phValues = phData.map(r => parseFloat(r[2])); // y-axis (pH values)
+
+    // Filter out EC rows
+    let ecData = sensorData.filter(r => r[1] === "EC");
+    let ecLabels = ecData.map(r => r[0]);
+    let ecValues = ecData.map(r => parseFloat(r[2]));
+
+    // Build the pH chart
+    let phCtx = document.getElementById("phChart").getContext('2d');
+    let phChart = new Chart(phCtx, {
+      type: 'line',
+      data: {
+        labels: phLabels,
+        datasets: [{
+          label: 'pH',
+          data: phValues,
+          borderColor: 'blue',
+          backgroundColor: 'rgba(0, 0, 255, 0.1)',
+          fill: true,
+          tension: 0.1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            suggestedMin: 4,
+            suggestedMax: 8
+          },
+          x: {
+            display: true,
+            title: { display: true, text: 'Time' }
+          }
+        }
+      }
+    });
+
+    // Build the EC chart
+    let ecCtx = document.getElementById("ecChart").getContext('2d');
+    let ecChart = new Chart(ecCtx, {
+      type: 'line',
+      data: {
+        labels: ecLabels,
+        datasets: [{
+          label: 'EC',
+          data: ecValues,
+          borderColor: 'green',
+          backgroundColor: 'rgba(0, 255, 0, 0.1)',
+          fill: true,
+          tension: 0.1
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            suggestedMin: 0,
+            suggestedMax: 3
+          },
+          x: {
+            display: true,
+            title: { display: true, text: 'Time' }
+          }
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>
