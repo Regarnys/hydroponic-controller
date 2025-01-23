@@ -1,19 +1,15 @@
-/* File: static/css/style.css */
-
+/* Just an example of minimal styling. */
 body {
   font-family: sans-serif;
   margin: 20px;
 }
-
+.green {
+  color: green;
+}
 table {
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-top: 10px;
 }
-
 th, td {
-  padding: 8px 12px;
-}
-
-h1 {
-  color: green;
+  padding: 6px 10px;
 }
