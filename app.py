@@ -19,6 +19,16 @@ def index():
 
     return render_template("index.html", sensor_data=sensor_rows)
 
+@app.route("/events")
+def events():
+    event_rows = []
+    with open("hydro_events.csv", "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader, None)  # skip the header
+        for row in reader:
+            event_rows.append(row)
+    
+    return render_template("events.html", event_data=event_rows)
 
 if __name__ == "__main__":
     # run Flask on port 5000
