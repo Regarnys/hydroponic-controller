@@ -1,4 +1,5 @@
-# sensors/ec_sensor.py
 def read_ec():
-    # Return a low EC so it doses nutrient
-    return 0.8
+    """
+    Mock reading an EC sensor. Replace with real code for your sensor interface.
+    """
+    return round(random.uniform(0.8, 1.8), 2)
