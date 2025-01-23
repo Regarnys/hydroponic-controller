@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for
 import csv
 import os
 import json
-import datetime
 
 # GPIO and Pump system
 from pumps.pumps import init_pumps, dose_pump
@@ -12,11 +11,11 @@ from pumps.pumps import init_pumps, dose_pump
 # Logging
 from data.logger import init_event_log, init_sensor_log, log_event, log_sensor
 
-# Optional sensor modules (mock or real)
+# Mock or real sensor modules
 from sensors.ph_sensor import read_ph
 from sensors.ec_sensor import read_ec
 
-# Optional naive dosing logic
+# Optional auto dosing logic
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 
 app = Flask(__name__)
@@ -44,13 +43,13 @@ def save_config():
     with open(CONFIG_FILE, "w") as f:
         json.dump(GLOBAL_CONFIG, f)
 
-# load config on startup
+# Load config on startup
 load_config()
 
 @app.route("/")
 def index():
     """
-    Displays sensor_data.csv in a table, plus a Chart.js chart for pH if desired.
+    Displays sensor_data.csv in a table and can optionally chart pH with Chart.js.
     """
     sensor_rows = []
     csv_path = os.path.join(os.path.dirname(__file__), "data", "sensor_data.csv")
@@ -67,7 +66,7 @@ def index():
 @app.route("/events")
 def events():
     """
-    Show hydro_events.csv logs (raw list).
+    Show hydro_events.csv logs (raw listing).
     """
     event_rows = []
     csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
@@ -75,7 +74,7 @@ def events():
     if os.path.exists(csv_path):
         with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.reader(f)
-            next(reader, None)
+            next(reader, None)  # skip header
             for row in reader:
                 event_rows.append(row)
 
@@ -124,39 +123,33 @@ def config():
 def auto_dosing_test():
     """
     Example route that reads mock sensor, applies naive auto logic,
-    logs result, and returns a simple message.
+    logs result, and returns a message with the results.
     """
     pH_val = read_ph()
     ec_val = read_ec()
     log_sensor("pH", pH_val)
     log_sensor("EC", ec_val)
 
-    # Use config thresholds
     ph_status = simple_ph_control(pH_val, GLOBAL_CONFIG["ph_min"], GLOBAL_CONFIG["ph_max"])
     ec_status = simple_ec_control(ec_val, GLOBAL_CONFIG["ec_min"])
 
-    # Always log the results
+    # Always log
     log_event("auto_ph", ph_status)
     log_event("auto_ec", ec_status)
 
     return f"Ran auto dosing. pH={pH_val}, ec={ec_val}. <br> {ph_status} <br> {ec_status}"
 
-# ---------------------------------------------------------------------
-# NEW: AGGREGATION & SUMMARY VIEW
-# ---------------------------------------------------------------------
+# -------------------------------------------------------------
+# NEW: AGGREGATION FOR EVENTS SUMMARY
+# -------------------------------------------------------------
 def aggregate_event_data():
     """
-    Reads hydro_events.csv, aggregates daily usage (in seconds) by pump.
-    Returns a dict like:
-      {
-        "2025-04-10": {"pH_up": 4.0, "pH_down": 2.0, "nutrientA":5.0, ...},
-        "2025-04-11": {"pH_up": 6.0, "pH_down": 0.0, "nutrientA":2.0, ...},
-      }
+    Reads hydro_events.csv, aggregates daily usage in seconds per pump.
     We'll parse lines like:
-      Timestamp,Event,Details
-      2025-04-10 14:05:00,manual_dose,"pH_up for 2s"
-    We'll extract date from the timestamp, parse "pH_up" and "2s" -> 2.0
-    If no "for Xs" found, default to 1.0 seconds or something minimal.
+      timestamp, event_type, details
+      "2025-04-10 14:05:00,manual_dose,pH_up for 2s"
+    If row has more than 3 columns, we slice the first three.
+    If row has fewer, we skip it.
     """
 
     csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
@@ -167,21 +160,24 @@ def aggregate_event_data():
 
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
-        header = next(reader, None)  # skip the header row
+        header = next(reader, None)  # skip "timestamp,event,details"
+
         for row in reader:
+            # if row has fewer than 3 fields, skip
             if len(row) < 3:
                 continue
-            timestamp_str, event_type, details = row
+            # if row has extra columns, take only first 3
+            timestamp_str, event_type, details = row[:3]
 
-            # date_str = "YYYY-MM-DD"
+            # Extract date from timestamp e.g. "2025-04-10"
             date_str = timestamp_str.split(" ")[0]
 
-            # parse pump_name and seconds from details
+            # parse "pH_up for 2s" => pump_name = "pH_up", usage_seconds=2.0
             pump_name = None
             usage_seconds = 0.0
 
             parts = details.split()
-            # e.g. ["pH_up", "for", "2s"] or just ["pH_up"]
+            # e.g. ["pH_up", "for", "2s"]
             if len(parts) == 3 and parts[1] == "for" and parts[2].endswith("s"):
                 pump_name = parts[0]
                 sec_str = parts[2].replace("s","")
@@ -190,11 +186,11 @@ def aggregate_event_data():
                 except ValueError:
                     usage_seconds = 1.0
             else:
-                # fallback: maybe the entire details is the pump name
+                # fallback: treat entire details as pump_name, usage=1.0
                 pump_name = details
                 usage_seconds = 1.0
 
-            # store in aggregator
+            # aggregator
             if date_str not in aggregator:
                 aggregator[date_str] = {}
             if pump_name not in aggregator[date_str]:
@@ -207,20 +203,19 @@ def aggregate_event_data():
 @app.route("/events_summary")
 def events_summary():
     """
-    Use aggregate_event_data() to produce daily usage data,
-    pass to a new template for a table or stacked bar chart.
+    Show a daily breakdown of total usage (seconds) per pump as a table or chart.
     """
     data_by_date = aggregate_event_data()
 
-    # Gather all unique pumps
+    # gather all pumps across all dates
     all_pumps = set()
     for date_str, usage_dict in data_by_date.items():
-        for pump in usage_dict.keys():
-            all_pumps.add(pump)
+        for p in usage_dict.keys():
+            all_pumps.add(p)
     all_pumps = sorted(all_pumps)
 
-    # Convert dict to a list so we can easily loop in Jinja
-    # e.g. [ {date: "2025-04-10", usage: {"pH_up": 4, "pH_down":2}}, ... ]
+    # Convert aggregator dict to a list so we can easily loop in Jinja
+    # e.g. [ {date: "2025-04-10", usage: {"pH_up":4, "nutrientA":2}}, ... ]
     aggregated_list = []
     for date_str in sorted(data_by_date.keys()):
         aggregated_list.append({
@@ -232,9 +227,7 @@ def events_summary():
                            all_pumps=all_pumps,
                            aggregated_data=aggregated_list)
 
-# ---------------------------------------------------------------------
+# -------------------------------------------------------------
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-               
