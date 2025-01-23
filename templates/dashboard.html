@@ -170,34 +170,43 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Partial snippet in dashboard.html for pH/EC chart -->
 <script>
-  // Chart.js code for pH and EC
-  // Replace with real data if you want
-  let phCtx = document.getElementById("phChart").getContext('2d');
-  let ecCtx = document.getElementById("ecChart").getContext('2d');
+  let phData = {{ ph_data|tojson }};
+  // phData is like [ ["2025-04-10 14:05:00", 5.8], ... ]
 
+  // We'll separate labels and values
+  let phLabels = phData.map(d => d[0]);
+  let phValues = phData.map(d => d[1]);
+
+  let ecData = {{ ec_data|tojson }};
+  let ecLabels = ecData.map(d => d[0]);
+  let ecValues = ecData.map(d => d[1]);
+
+  let phCtx = document.getElementById("phChart").getContext('2d');
   let phChart = new Chart(phCtx, {
     type: 'line',
     data: {
-      labels: ["12:00","12:05","12:10"], // or from sensor_data
+      labels: phLabels,
       datasets: [{
         label: "pH",
-        data: [5.8,6.0,6.1],
+        data: phValues,
         borderColor: 'blue',
-        fill:false
+        fill: false
       }]
     }
   });
 
+  let ecCtx = document.getElementById("ecChart").getContext('2d');
   let ecChart = new Chart(ecCtx, {
     type: 'line',
     data: {
-      labels: ["12:00","12:05","12:10"],
+      labels: ecLabels,
       datasets: [{
         label: "EC",
-        data: [1.1,1.2,1.25],
-        borderColor:'green',
-        fill:false
+        data: ecValues,
+        borderColor: 'green',
+        fill: false
       }]
     }
   });
