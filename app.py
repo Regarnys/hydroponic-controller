@@ -147,9 +147,8 @@ def aggregate_event_data():
     Reads hydro_events.csv, aggregates daily usage in seconds per pump.
     We'll parse lines like:
       timestamp, event_type, details
-      "2025-04-10 14:05:00,manual_dose,pH_up for 2s"
-    If row has more than 3 columns, we slice the first three.
-    If row has fewer, we skip it.
+      e.g. "2025-04-10 14:05:00,auto_ph,pH=6.63 => Dosed pH_down for 1s"
+    If details doesn't indicate a real 'Dosed <pump> for <X>s', we skip.
     """
 
     csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
@@ -166,29 +165,47 @@ def aggregate_event_data():
             # if row has fewer than 3 fields, skip
             if len(row) < 3:
                 continue
-            # if row has extra columns, take only first 3
+            # if row has extra columns, just slice first three
             timestamp_str, event_type, details = row[:3]
 
-            # Extract date from timestamp e.g. "2025-04-10"
+            # Extract date from timestamp, e.g. "2025-04-10"
             date_str = timestamp_str.split(" ")[0]
 
-            # parse "pH_up for 2s" => pump_name = "pH_up", usage_seconds=2.0
+            # We'll attempt to parse "Dosed <pump> for <X>s"
+            # If not found, we skip or set usage_seconds=0
             pump_name = None
             usage_seconds = 0.0
 
-            parts = details.split()
-            # e.g. ["pH_up", "for", "2s"]
-            if len(parts) == 3 and parts[1] == "for" and parts[2].endswith("s"):
-                pump_name = parts[0]
-                sec_str = parts[2].replace("s","")
+            # Approach: we only care if line includes "Dosed" and " for "?
+            # e.g. "pH=6.63 => Dosed pH_down for 1s"
+            if "Dosed" in details and " for " in details and details.endswith("s"):
+                # example: "pH=6.63 => Dosed pH_down for 1s"
+                # split by "Dosed " => ["pH=6.63 => ", "pH_down for 1s"]
+                # or we can just find the substring
+                # let's do a simpler approach:
+                # find the index of "Dosed "
+                # then parse the pump_name and seconds
                 try:
-                    usage_seconds = float(sec_str)
-                except ValueError:
-                    usage_seconds = 1.0
-            else:
-                # fallback: treat entire details as pump_name, usage=1.0
-                pump_name = details
-                usage_seconds = 1.0
+                    # e.g. details might be: "pH=6.63 => Dosed pH_down for 1s"
+                    # strip off leading stuff up to "Dosed "
+                    dosed_index = details.index("Dosed ") + len("Dosed ")
+                    # now details[dosed_index:] might be "pH_down for 1s"
+                    sub_str = details[dosed_index:]  # "pH_down for 1s"
+                    # split by " for "
+                    if " for " in sub_str:
+                        pump_part, sec_part = sub_str.split(" for ", 1)  # ["pH_down", "1s"]
+                        pump_name = pump_part.strip()
+                        if sec_part.endswith("s"):
+                            sec_str = sec_part[:-1]  # remove 's'
+                            usage_seconds = float(sec_str)
+                except (ValueError, IndexError):
+                    pass
+
+            # else if "Dosed <something> for Xs" not found, skip
+            if not pump_name:
+                # This means it might be "pH=6.49 => in range" or something else
+                # We skip it, no pump usage
+                continue
 
             # aggregator
             if date_str not in aggregator:
@@ -199,6 +216,7 @@ def aggregate_event_data():
             aggregator[date_str][pump_name] += usage_seconds
 
     return aggregator
+
 
 @app.route("/events_summary")
 def events_summary():
