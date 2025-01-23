@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hydroponic Dashboard</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Optional: Chart.js for mini charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-light">
+
+<div class="container my-4">
+  <h1 class="mb-4">Hydroponic Dashboard</h1>
+
+  <!-- Row 1: pH and EC line charts side by side -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Real-Time pH</h5>
+          <canvas id="phChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Real-Time EC</h5>
+          <canvas id="ecChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Stats tiles (last dosing, usage, etc.) -->
+  <div class="row mb-4">
+    <!-- Last Dosing tile -->
+    <div class="col-md-4">
+      <div class="card text-bg-light shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Last Dosing</h5>
+          <p class="card-text" id="lastDosingInfo">
+            <!-- E.g. "pH_up for 2s at 14:05" or "No dosing yet." -->
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Usage tile -->
+    <div class="col-md-4">
+      <div class="card text-bg-light shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Daily Usage</h5>
+          <p class="card-text" id="dailyUsageInfo">
+            <!-- E.g. "pH_up: 10s, pH_down: 3s, nutrientA: 20s" -->
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maybe a tile for "Next Auto-Dosing" or "pH/EC in range?" -->
+    <div class="col-md-4">
+      <div class="card text-bg-light shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">System Status</h5>
+          <p class="card-text" id="systemStatusInfo">
+            <!-- E.g. "pH in range (6.1), EC in range (1.2). Next auto check in 2 min." -->
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Quick logs or interaction tile -->
+  <div class="row mb-4">
+    <!-- Log snippet tile -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Recent Events</h5>
+          <ul id="recentEventsList" class="list-group">
+            <!-- e.g. <li class="list-group-item">2025-01-25 14:05 - pH_up for 2s</li> -->
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pump control tile -->
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">Manual Pump Control</h5>
+          <form method="POST" action="{{ url_for('manual_control') }}">
+            <div class="mb-3">
+              <label for="pump_name" class="form-label">Pump:</label>
+              <select name="pump_name" id="pump_name" class="form-select">
+                <option>pH_up</option>
+                <option>pH_down</option>
+                <option>nutrientA</option>
+                <option>nutrientB</option>
+                <option>nutrientC</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="run_seconds" class="form-label">Seconds:</label>
+              <input type="text" name="run_seconds" class="form-control" id="run_seconds">
+            </div>
+            <button type="submit" class="btn btn-primary">Run Pump</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Optional: your own JS to populate or auto-refresh certain elements -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // If you want to do small line charts for pH/EC:
+
+  let phCtx = document.getElementById("phChart").getContext('2d');
+  let ecCtx = document.getElementById("ecChart").getContext('2d');
+
+  // Example data
+  let phLabels = ["12:00","12:05","12:10","12:15"];
+  let phValues = [5.8, 6.0, 6.1, 6.05];
+  let phChart = new Chart(phCtx, {
+    type: 'line',
+    data: {
+      labels: phLabels,
+      datasets: [{
+        label: "pH",
+        data: phValues,
+        borderColor: 'blue',
+        fill: false
+      }]
+    }
+  });
+
+  let ecLabels = ["12:00","12:05","12:10","12:15"];
+  let ecValues = [1.0, 1.1, 1.2, 1.2];
+  let ecChart = new Chart(ecCtx, {
+    type: 'line',
+    data: {
+      labels: ecLabels,
+      datasets: [{
+        label: "EC",
+        data: ecValues,
+        borderColor: 'green',
+        fill: false
+      }]
+    }
+  });
+
+  // You can auto-refresh these with an AJAX call or SSE to get new pH/EC data
+</script>
+</body>
+</html>
