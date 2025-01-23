@@ -17,5 +17,11 @@
   {% endfor %}
 </table>
 <p><a href="{{ url_for('index') }}">Back to Home</a></p>
+{% if has_prev_page %}
+  <a href="{{ url_for('dashboard', page=(current_page-1)) }}" class="btn btn-secondary">Previous</a>
+{% endif %}
+{% if has_next_page %}
+  <a href="{{ url_for('dashboard', page=(current_page+1)) }}" class="btn btn-secondary">Next</a>
+{% endif %}
 </body>
 </html>
