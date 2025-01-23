@@ -8,9 +8,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    # Read sensor_data.csv for demonstration
-    sensor_rows = []
-    with open("data/sensor_data.csv", "r", encoding="utf-8") as f:
+    with open("sensor_data.csv", "r", encoding="utf-8") as f:
         reader = csv.reader(f)
         header = next(reader)  # skip the header row: timestamp,sensor_name,value
         for row in reader:
