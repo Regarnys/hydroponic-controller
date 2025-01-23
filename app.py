@@ -8,14 +8,15 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
+    # Make sure to define sensor_rows BEFORE using it
+    sensor_rows = []
+
     with open("sensor_data.csv", "r", encoding="utf-8") as f:
         reader = csv.reader(f)
-        header = next(reader)  # skip the header row: timestamp,sensor_name,value
+        header = next(reader)  # skip header
         for row in reader:
             sensor_rows.append(row)
-            # each row is like [timestamp, sensor_name, value]
 
-    # We'll pass 'sensor_rows' to our template to display or chart
     return render_template("index.html", sensor_data=sensor_rows)
 
 
