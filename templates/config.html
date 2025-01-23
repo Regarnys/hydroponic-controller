@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
-<head><title>Configuration</title></head>
+<head>
+  <meta charset="UTF-8">
+  <title>System Config</title>
+</head>
 <body>
 <h1>System Config</h1>
 <form method="POST">
@@ -9,6 +12,6 @@
   <label>EC Min: <input type="text" name="ec_min" value="{{ config.ec_min }}"></label><br><br>
   <button type="submit">Save</button>
 </form>
+<p><a href="{{ url_for('index') }}">Back to Home</a></p>
 </body>
 </html>
-
