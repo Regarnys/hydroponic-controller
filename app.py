@@ -63,6 +63,19 @@ def index():
 
     return render_template("index.html", sensor_data=sensor_rows)
 
+@app.route("/dashboard")
+def dashboard():
+    # (Optional) gather any data or stats you need to pass to the template
+    # e.g. last_dose_info, daily_usage, sensor_rows, etc.
+    last_dose = "pH_up for 2s at 14:05"  # example
+    daily_usage = {"pH_up": 20, "pH_down": 5}  # example
+
+    return render_template(
+        "dashboard.html",
+        last_dose_info=last_dose,
+        daily_usage_info=daily_usage
+    )
+
 @app.route("/events")
 def events():
     """
