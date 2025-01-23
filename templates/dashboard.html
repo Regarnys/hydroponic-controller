@@ -1,99 +1,96 @@
+<!-- File: templates/dashboard.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>Hydroponic Dashboard</title>
-
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Optional: Chart.js for mini charts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-light">
+<div class="container py-3">
 
-<div class="container my-4">
-  <h1 class="mb-4">Hydroponic Dashboard</h1>
+  <h1>Central Dashboard</h1>
 
-  <!-- Row 1: pH and EC line charts side by side -->
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <div class="card shadow-sm">
+  <!-- Nav Tabs -->
+  <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button">Overview</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button">Events</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button">Manual Pump</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button">Config</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button">Summary</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3">
+    <!-- OVERVIEW TAB -->
+    <div class="tab-pane fade show active" id="overview">
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card mb-3">
+            <div class="card-header">pH Chart</div>
+            <div class="card-body">
+              <canvas id="phChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card mb-3">
+            <div class="card-header">EC Chart</div>
+            <div class="card-body">
+              <canvas id="ecChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- You can add a "Run Auto Dosing" button here if you want -->
+      <form method="POST" action="{{ url_for('dashboard') }}">
+        <input type="hidden" name="action" value="auto_dosing_test">
+        <button class="btn btn-warning">Run Auto Dosing Test</button>
+      </form>
+    </div>
+
+    <!-- EVENTS TAB -->
+    <div class="tab-pane fade" id="events">
+      <div class="card">
+        <div class="card-header">Recent Events (raw logs)</div>
         <div class="card-body">
-          <h5 class="card-title">Real-Time pH</h5>
-          <canvas id="phChart" width="400" height="200"></canvas>
+          {% if event_rows %}
+            <table class="table table-striped">
+              <thead><tr><th>Timestamp</th><th>Event</th><th>Details</th></tr></thead>
+              <tbody>
+                {% for row in event_rows %}
+                  <tr>
+                    <td>{{ row[0] }}</td>
+                    <td>{{ row[1] }}</td>
+                    <td>{{ row[2] }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p>No events found.</p>
+          {% endif %}
         </div>
       </div>
     </div>
 
-    <div class="col-md-6">
-      <div class="card shadow-sm">
+    <!-- MANUAL PUMP TAB -->
+    <div class="tab-pane fade" id="manual">
+      <div class="card">
+        <div class="card-header">Manual Pump Control</div>
         <div class="card-body">
-          <h5 class="card-title">Real-Time EC</h5>
-          <canvas id="ecChart" width="400" height="200"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Row 2: Stats tiles (last dosing, usage, etc.) -->
-  <div class="row mb-4">
-    <!-- Last Dosing tile -->
-    <div class="col-md-4">
-      <div class="card text-bg-light shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">Last Dosing</h5>
-          <p class="card-text" id="lastDosingInfo">
-            <!-- E.g. "pH_up for 2s at 14:05" or "No dosing yet." -->
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Daily Usage tile -->
-    <div class="col-md-4">
-      <div class="card text-bg-light shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">Daily Usage</h5>
-          <p class="card-text" id="dailyUsageInfo">
-            <!-- E.g. "pH_up: 10s, pH_down: 3s, nutrientA: 20s" -->
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Maybe a tile for "Next Auto-Dosing" or "pH/EC in range?" -->
-    <div class="col-md-4">
-      <div class="card text-bg-light shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">System Status</h5>
-          <p class="card-text" id="systemStatusInfo">
-            <!-- E.g. "pH in range (6.1), EC in range (1.2). Next auto check in 2 min." -->
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Row 3: Quick logs or interaction tile -->
-  <div class="row mb-4">
-    <!-- Log snippet tile -->
-    <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">Recent Events</h5>
-          <ul id="recentEventsList" class="list-group">
-            <!-- e.g. <li class="list-group-item">2025-01-25 14:05 - pH_up for 2s</li> -->
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pump control tile -->
-    <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title">Manual Pump Control</h5>
-          <form method="POST" action="{{ url_for('manual_control') }}">
+          <form method="POST" action="{{ url_for('dashboard') }}">
+            <input type="hidden" name="action" value="manual_pump">
             <div class="mb-3">
               <label for="pump_name" class="form-label">Pump:</label>
               <select name="pump_name" id="pump_name" class="form-select">
@@ -106,56 +103,105 @@
             </div>
             <div class="mb-3">
               <label for="run_seconds" class="form-label">Seconds:</label>
-              <input type="text" name="run_seconds" class="form-control" id="run_seconds">
+              <input type="text" name="run_seconds" class="form-control">
             </div>
             <button type="submit" class="btn btn-primary">Run Pump</button>
           </form>
         </div>
       </div>
     </div>
+
+    <!-- CONFIG TAB -->
+    <div class="tab-pane fade" id="config">
+      <div class="card">
+        <div class="card-header">System Config</div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('dashboard') }}">
+            <input type="hidden" name="action" value="update_config">
+            <div class="mb-3">
+              <label>pH Min:</label>
+              <input type="text" name="ph_min" class="form-control" value="{{ config.ph_min }}">
+            </div>
+            <div class="mb-3">
+              <label>pH Max:</label>
+              <input type="text" name="ph_max" class="form-control" value="{{ config.ph_max }}">
+            </div>
+            <div class="mb-3">
+              <label>EC Min:</label>
+              <input type="text" name="ec_min" class="form-control" value="{{ config.ec_min }}">
+            </div>
+            <button class="btn btn-primary" type="submit">Save</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY TAB (Aggregated usage) -->
+    <div class="tab-pane fade" id="summary">
+      <div class="card">
+        <div class="card-header">Daily Usage Summary</div>
+        <div class="card-body">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Date</th>
+                {% for p in all_pumps %}
+                  <th>{{ p }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for day_data in aggregated_data %}
+                <tr>
+                  <td>{{ day_data.date }}</td>
+                  {% for p in all_pumps %}
+                    <td>
+                      {{ day_data.usage.get(p, 0) }}
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- Optional: your own JS to populate or auto-refresh certain elements -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // If you want to do small line charts for pH/EC:
-
+  // Chart.js code for pH and EC
+  // Replace with real data if you want
   let phCtx = document.getElementById("phChart").getContext('2d');
   let ecCtx = document.getElementById("ecChart").getContext('2d');
 
-  // Example data
-  let phLabels = ["12:00","12:05","12:10","12:15"];
-  let phValues = [5.8, 6.0, 6.1, 6.05];
   let phChart = new Chart(phCtx, {
     type: 'line',
     data: {
-      labels: phLabels,
+      labels: ["12:00","12:05","12:10"], // or from sensor_data
       datasets: [{
         label: "pH",
-        data: phValues,
+        data: [5.8,6.0,6.1],
         borderColor: 'blue',
-        fill: false
+        fill:false
       }]
     }
   });
 
-  let ecLabels = ["12:00","12:05","12:10","12:15"];
-  let ecValues = [1.0, 1.1, 1.2, 1.2];
   let ecChart = new Chart(ecCtx, {
     type: 'line',
     data: {
-      labels: ecLabels,
+      labels: ["12:00","12:05","12:10"],
       datasets: [{
         label: "EC",
-        data: ecValues,
-        borderColor: 'green',
-        fill: false
+        data: [1.1,1.2,1.25],
+        borderColor:'green',
+        fill:false
       }]
     }
   });
-
-  // You can auto-refresh these with an AJAX call or SSE to get new pH/EC data
 </script>
 </body>
 </html>
+
