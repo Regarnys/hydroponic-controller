@@ -102,21 +102,30 @@ def simple_ph_control(pH):
 # -----------------------------
 def simple_ec_control(ec):
     """
-    Simple EC logic:
-    - If ec < 1.0 => dose nutrientA for 2s (if limit allows).
-    - Otherwise do nothing.
-    Returns a string describing the action (or lack thereof).
+    Multi-nutrient logic:
+    - If ec < 1.0 => dose nutrientA for 2s
+    - If 1.0 <= ec < 1.5 => dose nutrientB for 2s
+    - If 1.5 <= ec < 2.0 => dose nutrientC for 2s
+    - else => no action
+    (Adjust thresholds & times as needed)
     """
     reset_daily_counters_if_new_day()
 
     if ec < 1.0:
         pump_name = "nutrientA"
         dose_sec = 2
-        if can_dose(pump_name, dose_sec):
-            dose_pump(pump_name, dose_sec)
-            record_dose(pump_name, dose_sec)
-            return f"EC={ec:.2f} -> Dosed {pump_name} for {dose_sec}s"
-        else:
-            return f"EC={ec:.2f} -> {pump_name} limit reached, no further dosing"
+    elif ec < 1.5:
+        pump_name = "nutrientB"
+        dose_sec = 2
+    elif ec < 2.0:
+        pump_name = "nutrientC"
+        dose_sec = 2
     else:
-        return f"EC={ec:.2f} -> EC in range, no action"
+        return f"EC={ec:.2f} -> EC is already >= 2.0, no action"
+    
+    if can_dose(pump_name, dose_sec):
+        dose_pump(pump_name, dose_sec)
+        record_dose(pump_name, dose_sec)
+        return f"EC={ec:.2f} -> Dosed {pump_name} for {dose_sec}s"
+    else:
+        return f"EC={ec:.2f} -> {pump_name} limit reached, no further dosing"
