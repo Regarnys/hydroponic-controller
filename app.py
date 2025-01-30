@@ -10,7 +10,7 @@ import threading
 # Pump, Logging, and Sensor modules
 from pumps.pumps import init_pumps, dose_pump
 from data.logger import init_event_log, init_sensor_log, log_event, log_sensor, start_continuous_logging
-from sensors import SensorReader
+from sensors_pkg.sensors import SensorReader
 # Optional auto dosing logic
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 
