@@ -5,12 +5,13 @@ import csv
 import os
 import json
 from datetime import datetime
+import threading
 
-# Pump, Logging, Sensor modules
+# Pump, Logging, and Sensor modules
 from pumps.pumps import init_pumps, dose_pump
-from data.logger import init_event_log, init_sensor_log, log_event, log_sensor
-
-# Optional auto dosing logic (we'll skip using it for auto triggers now)
+from data.logger import init_event_log, init_sensor_log, log_event, log_sensor, start_continuous_logging
+from sensors import SensorReader
+# Optional auto dosing logic
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 
 app = Flask(__name__)
@@ -117,27 +118,18 @@ def dashboard():
             save_config()
 
         elif action == "auto_dosing_test":
-            # READ & LOG SENSORS WITHOUT TRIGGERING PUMPS
-            
-            # If you have direct sensor read methods:
-            # (If you previously had read_ph(), read_ec() from sensors.*)
-            # Just ensure they are still accessible. Example placeholders:
-
-            from sensors.ph_sensor import read_ph  # or your sensor reading function
+            # Example: read sensor, log data, but no auto-dosing triggers
+            from sensors.ph_sensor import read_ph
             from sensors.ec_sensor import read_ec
 
-            pH_val = read_ph()   # e.g. returns float or None
-            ec_val = read_ec()   # e.g. returns float or None
-
-            # Log them to sensor_data.csv if you want
+            pH_val = read_ph()
             if pH_val is not None:
                 log_sensor("pH", pH_val)
+
+            ec_val = read_ec()
             if ec_val is not None:
                 log_sensor("EC", ec_val)
 
-            # Omit calls to simple_ph_control or simple_ec_control
-            # so no automatic pump triggers occur.
-            # Optionally log an event to note that we tested sensor reads only
             log_event("auto_test", "Sensors read, no auto-dosing performed")
 
     # For GET or after POST, gather data for the charts
@@ -229,5 +221,19 @@ def dashboard():
     )
 
 if __name__ == "__main__":
+    # 1) Create a sensor for the background logger
+    sensor_obj = SensorReader(i2c_bus=1, ph_address=0x63, ec_address=0x64)
+
+    # 2) Launch continuous logging in a background thread
+    #    so it doesn't block Flask from running.
+    logging_interval = 10  # seconds
+    def run_logger():
+        from data.logger import start_continuous_logging
+        start_continuous_logging(sensor_obj, interval=logging_interval)
+
+    t = threading.Thread(target=run_logger, daemon=True)
+    t.start()
+
+    # 3) Run the Flask server
     app.run(host="0.0.0.0", port=5001, debug=True)
 
