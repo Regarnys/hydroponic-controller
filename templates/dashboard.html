@@ -1,195 +1,41 @@
-<!-- File: templates/dashboard.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <title>Hydroponic Dashboard</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-light">
-<div class="container py-3">
+<body>
+<h1>Hydroponic Dashboard</h1>
 
-  <h1>Central Dashboard</h1>
+<!-- Possibly a nav bar with links to calibrate, config, etc. -->
+<p>
+  <a href="{{ url_for('config') }}">Config</a> |
+  <a href="{{ url_for('calibrate_pump') }}">Calibrate</a> |
+  ...
+</p>
 
-  <!-- Nav Tabs -->
-  <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
-    <li class="nav-item">
-      <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button">Overview</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button">Events</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button">Manual Pump</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button">Config</button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button">Summary</button>
-    </li>
-  </ul>
+<!-- pH and EC charts using ph_data, ec_data from app.py -->
+<h2>pH / EC Charts</h2>
+<canvas id="phChart" width="400" height="200"></canvas>
+<canvas id="ecChart" width="400" height="200"></canvas>
 
-  <div class="tab-content mt-3">
-    <!-- OVERVIEW TAB -->
-    <div class="tab-pane fade show active" id="overview">
-      <div class="row">
-        <div class="col-md-6">
-          <div class="card mb-3">
-            <div class="card-header">pH Chart</div>
-            <div class="card-body">
-              <canvas id="phChart"></canvas>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card mb-3">
-            <div class="card-header">EC Chart</div>
-            <div class="card-body">
-              <canvas id="ecChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- You can add a "Run Auto Dosing" button here if you want -->
-      <form method="POST" action="{{ url_for('dashboard') }}">
-        <input type="hidden" name="action" value="auto_dosing_test">
-        <button class="btn btn-warning">Run Auto Dosing Test</button>
-      </form>
-    </div>
-
-    <!-- EVENTS TAB -->
-    <div class="tab-pane fade" id="events">
-      <div class="card">
-        <div class="card-header">Recent Events (raw logs)</div>
-        <div class="card-body">
-          {% if event_rows %}
-            <table class="table table-striped">
-              <thead><tr><th>Timestamp</th><th>Event</th><th>Details</th></tr></thead>
-              <tbody>
-                {% for row in event_rows %}
-                  <tr>
-                    <td>{{ row[0] }}</td>
-                    <td>{{ row[1] }}</td>
-                    <td>{{ row[2] }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p>No events found.</p>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
-    <!-- MANUAL PUMP TAB -->
-    <div class="tab-pane fade" id="manual">
-      <div class="card">
-        <div class="card-header">Manual Pump Control</div>
-        <div class="card-body">
-          <form method="POST" action="{{ url_for('dashboard') }}">
-            <input type="hidden" name="action" value="manual_pump">
-            <div class="mb-3">
-              <label for="pump_name" class="form-label">Pump:</label>
-              <select name="pump_name" id="pump_name" class="form-select">
-                <option>pH_up</option>
-                <option>pH_down</option>
-                <option>nutrientA</option>
-                <option>nutrientB</option>
-                <option>nutrientC</option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="run_seconds" class="form-label">Seconds:</label>
-              <input type="text" name="run_seconds" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-primary">Run Pump</button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- CONFIG TAB -->
-    <div class="tab-pane fade" id="config">
-      <div class="card">
-        <div class="card-header">System Config</div>
-        <div class="card-body">
-          <form method="POST" action="{{ url_for('dashboard') }}">
-            <input type="hidden" name="action" value="update_config">
-            <div class="mb-3">
-              <label>pH Min:</label>
-              <input type="text" name="ph_min" class="form-control" value="{{ config.ph_min }}">
-            </div>
-            <div class="mb-3">
-              <label>pH Max:</label>
-              <input type="text" name="ph_max" class="form-control" value="{{ config.ph_max }}">
-            </div>
-            <div class="mb-3">
-              <label>EC Min:</label>
-              <input type="text" name="ec_min" class="form-control" value="{{ config.ec_min }}">
-            </div>
-            <button class="btn btn-primary" type="submit">Save</button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- SUMMARY TAB (Aggregated usage) -->
-    <div class="tab-pane fade" id="summary">
-      <div class="card">
-        <div class="card-header">Daily Usage Summary</div>
-        <div class="card-body">
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Date</th>
-                {% for p in all_pumps %}
-                  <th>{{ p }}</th>
-                {% endfor %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for day_data in aggregated_data %}
-                <tr>
-                  <td>{{ day_data.date }}</td>
-                  {% for p in all_pumps %}
-                    <td>
-                      {{ day_data.usage.get(p, 0) }}
-                    </td>
-                  {% endfor %}
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- Partial snippet in dashboard.html for pH/EC chart -->
 <script>
   let phData = {{ ph_data|tojson }};
-  // phData is like [ ["2025-04-10 14:05:00", 5.8], ... ]
+  let ecData = {{ ec_data|tojson }};
 
-  // We'll separate labels and values
   let phLabels = phData.map(d => d[0]);
   let phValues = phData.map(d => d[1]);
-
-  let ecData = {{ ec_data|tojson }};
   let ecLabels = ecData.map(d => d[0]);
   let ecValues = ecData.map(d => d[1]);
 
   let phCtx = document.getElementById("phChart").getContext('2d');
-  let phChart = new Chart(phCtx, {
+  new Chart(phCtx, {
     type: 'line',
     data: {
       labels: phLabels,
       datasets: [{
-        label: "pH",
+        label: 'pH',
         data: phValues,
         borderColor: 'blue',
         fill: false
@@ -198,12 +44,12 @@
   });
 
   let ecCtx = document.getElementById("ecChart").getContext('2d');
-  let ecChart = new Chart(ecCtx, {
+  new Chart(ecCtx, {
     type: 'line',
     data: {
       labels: ecLabels,
       datasets: [{
-        label: "EC",
+        label: 'EC',
         data: ecValues,
         borderColor: 'green',
         fill: false
@@ -211,6 +57,96 @@
     }
   });
 </script>
+
+<!-- Manual Pump form -->
+<h2>Manual Pump Control</h2>
+<form method="POST">
+  <input type="hidden" name="action" value="manual_pump">
+  <label>Pump:</label>
+  <select name="pump_name">
+    <option>pH_up</option>
+    <option>pH_down</option>
+    <option>nutrientA</option>
+    <option>nutrientB</option>
+    <option>nutrientC</option>
+  </select>
+  <label>Seconds:</label>
+  <input type="text" name="run_seconds" value="5">
+  <button>Run Pump</button>
+</form>
+
+<!-- Volume-based dosing form -->
+<h2>Volume-based Dosing</h2>
+<form method="POST">
+  <input type="hidden" name="action" value="volume_dose">
+  <label>Pump:</label>
+  <select name="pump_name">
+    <option>pH_up</option>
+    <option>pH_down</option>
+    <option>nutrientA</option>
+    <option>nutrientB</option>
+    <option>nutrientC</option>
+  </select>
+  <label>Volume (mL):</label>
+  <input type="text" name="ml_amount" value="5">
+  <button>Dose Volume</button>
+</form>
+
+<!-- Auto Dosing Test -->
+<h2>Auto Dosing Test</h2>
+<form method="POST">
+  <input type="hidden" name="action" value="auto_dosing_test">
+  <button>Read & Log Sensors + AutoDosing</button>
+</form>
+
+<!-- Events table / pagination -->
+<h2>Events</h2>
+{% if event_rows %}
+  <table border="1">
+    <tr><th>Timestamp</th><th>Event</th><th>Details</th></tr>
+    {% for row in event_rows %}
+    <tr>
+      <td>{{ row[0] }}</td>
+      <td>{{ row[1] }}</td>
+      <td>{{ row[2] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p>
+  {% if has_prev_page %}
+    <a href="{{ url_for('dashboard', page=current_page-1) }}">Prev</a>
+  {% endif %}
+  {% if has_next_page %}
+    <a href="{{ url_for('dashboard', page=current_page+1) }}">Next</a>
+  {% endif %}
+  </p>
+{% else %}
+  <p>No events found</p>
+{% endif %}
+
+<!-- Summary usage aggregator -->
+<h2>Summary Usage</h2>
+{% if aggregated_data %}
+  <table border="1">
+    <tr>
+      <th>Date</th>
+      {% for p in all_pumps %}
+      <th>{{ p }}</th>
+      {% endfor %}
+    </tr>
+    {% for day_data in summary_list %}
+      <tr>
+        <td>{{ day_data.date }}</td>
+        {% for p in all_pumps %}
+          <td>{{ day_data.usage.get(p, 0) }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </table>
+{% else %}
+  <p>No aggregator data yet.</p>
+{% endif %}
+
 </body>
 </html>
 
