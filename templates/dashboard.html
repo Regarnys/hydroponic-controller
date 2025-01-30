@@ -126,15 +126,42 @@
     </div>
 
     <!-- PUMP CONTROL TAB -->
-    <div class="tab-pane fade" id="pumpcontrol" role="tabpanel" aria-labelledby="pumpcontrol-tab">
-      <h2>Pump Control</h2>
-      <p>Here you can manually run pumps or calibrate them below.</p>
+<div class="tab-pane fade" id="pumpcontrol" role="tabpanel" aria-labelledby="pumpcontrol-tab">
+  <h2>Pump Control</h2>
+  <p>Manually run pumps or calibrate them below.</p>
 
-      <h3>Manual Pump Control (Seconds)</h3>
-      <form method="POST" class="mb-3">
+  <div class="row">
+    <!-- Left Column: Manual Pump Control -->
+    <div class="col-md-6 mb-3">
+      <h3>Manual Pump (Seconds)</h3>
+      <form method="POST">
         <input type="hidden" name="action" value="manual_pump">
         <div class="mb-2">
-          <label>Pump:</label>
+          <label for="pump_name" class="form-label">Pump:</label>
+          <select name="pump_name" id="pump_name" class="form-select w-auto d-inline">
+            <option>pH_up</option>
+            <option>pH_down</option>
+            <option>nutrientA</option>
+            <option>nutrientB</option>
+            <option>nutrientC</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label for="run_seconds" class="form-label">Seconds:</label>
+          <input type="text" name="run_seconds" id="run_seconds"
+                 value="5" class="form-control w-auto d-inline">
+        </div>
+        <button class="btn btn-primary">Run Pump</button>
+      </form>
+    </div>
+
+    <!-- Right Column: Volume-based Dosing -->
+    <div class="col-md-6 mb-3">
+      <h3>Volume-based Dosing</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="volume_dose">
+        <div class="mb-2">
+          <label class="form-label">Pump:</label>
           <select name="pump_name" class="form-select w-auto d-inline">
             <option>pH_up</option>
             <option>pH_down</option>
@@ -144,11 +171,76 @@
           </select>
         </div>
         <div class="mb-2">
-          <label>Seconds:</label>
-          <input type="text" name="run_seconds" value="5" class="form-control w-auto d-inline">
+          <label class="form-label">Volume (mL):</label>
+          <input type="text" name="ml_amount" value="10"
+                 class="form-control w-auto d-inline">
         </div>
-        <button class="btn btn-primary">Run Pump</button>
+        <button class="btn btn-success">Dose Volume</button>
       </form>
+    </div>
+  </div><!-- row -->
+
+  <hr class="my-4">
+
+  <div class="row">
+    <!-- Left Column: Calibration Test Run -->
+    <div class="col-md-6 mb-3">
+      <h3>Calibration: Test Run</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="cal_test_run">
+        <div class="mb-2">
+          <label class="form-label">Pump:</label>
+          <select name="pump_name" class="form-select w-auto d-inline">
+            <option>pH_up</option>
+            <option>pH_down</option>
+            <option>nutrientA</option>
+            <option>nutrientB</option>
+            <option>nutrientC</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Seconds:</label>
+          <input type="text" name="cal_test_seconds" value="5"
+                 class="form-control w-auto d-inline">
+        </div>
+        <button class="btn btn-secondary">Run Pump</button>
+      </form>
+    </div>
+
+    <!-- Right Column: Save Measured Volume -->
+    <div class="col-md-6 mb-3">
+      <h3>Calibration: Save Measurement</h3>
+      <form method="POST">
+        <input type="hidden" name="action" value="cal_save">
+        <div class="mb-2">
+          <label class="form-label">Pump:</label>
+          <select name="pump_name" class="form-select w-auto d-inline">
+            <option>pH_up</option>
+            <option>pH_down</option>
+            <option>nutrientA</option>
+            <option>nutrientB</option>
+            <option>nutrientC</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Seconds (same used above):</label>
+          <input type="text" name="cal_test_seconds" value="5"
+                 class="form-control w-auto d-inline">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Measured mL:</label>
+          <input type="text" name="measured_ml" value="0"
+                 class="form-control w-auto d-inline">
+        </div>
+        <button class="btn btn-info">Save Calibration</button>
+      </form>
+
+      <h5 class="mt-3">Current Calibration</h5>
+      <pre>{{ config["pump_calibration"]|tojson }}</pre>
+    </div>
+  </div><!-- row -->
+</div><!-- end Pump Control tab -->
+
 
       <h3>Volume-based Dosing</h3>
       <form method="POST">
