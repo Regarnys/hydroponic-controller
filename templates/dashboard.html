@@ -6,8 +6,7 @@
 
   <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-
-  <!-- Chart.js for pH/EC charts -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -22,12 +21,10 @@
 <div class="container py-3">
   <h1 class="mb-4">Hydroponic Dashboard</h1>
 
-  <!-- Display any status messages from 'message' in app.py -->
   {% if message %}
     <div class="alert alert-info">{{ message }}</div>
   {% endif %}
 
-  <!-- Nav Tabs -->
   <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="livedata-tab" data-bs-toggle="tab"
@@ -58,6 +55,13 @@
       </button>
     </li>
     <li class="nav-item" role="presentation">
+      <button class="nav-link" id="insights-tab" data-bs-toggle="tab"
+              data-bs-target="#insights" type="button" role="tab"
+              aria-controls="insights" aria-selected="false">
+        Insights
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
       <button class="nav-link" id="config-tab" data-bs-toggle="tab"
               data-bs-target="#config" type="button" role="tab"
               aria-controls="config" aria-selected="false">
@@ -67,7 +71,6 @@
   </ul>
 
   <div class="tab-content mt-3" id="dashboardTabsContent">
-
     <!-- LIVE DATA TAB -->
     <div class="tab-pane fade show active" id="livedata" role="tabpanel" aria-labelledby="livedata-tab">
       <h2>pH &amp; EC Charts (last 20 points)</h2>
@@ -124,7 +127,7 @@
         <input type="hidden" name="action" value="auto_dosing_test">
         <button class="btn btn-warning">Read &amp; Log Sensors + Basic Dosing Logic</button>
       </form>
-    </div>
+    </div><!-- end livedata tab -->
 
     <!-- PUMP CONTROL TAB -->
     <div class="tab-pane fade" id="pumpcontrol" role="tabpanel" aria-labelledby="pumpcontrol-tab">
@@ -201,7 +204,8 @@
             </div>
             <div class="mb-2">
               <label class="form-label">Seconds:</label>
-              <input type="text" name="cal_test_seconds" value="5" class="form-control w-auto d-inline">
+              <input type="text" name="cal_test_seconds" value="5"
+                     class="form-control w-auto d-inline">
             </div>
             <button class="btn btn-secondary">Run Pump</button>
           </form>
@@ -224,11 +228,13 @@
             </div>
             <div class="mb-2">
               <label class="form-label">Seconds (same used above):</label>
-              <input type="text" name="cal_test_seconds" value="5" class="form-control w-auto d-inline">
+              <input type="text" name="cal_test_seconds" value="5"
+                     class="form-control w-auto d-inline">
             </div>
             <div class="mb-2">
               <label class="form-label">Measured mL:</label>
-              <input type="text" name="measured_ml" value="0" class="form-control w-auto d-inline">
+              <input type="text" name="measured_ml" value="0"
+                     class="form-control w-auto d-inline">
             </div>
             <button class="btn btn-info">Save Calibration</button>
           </form>
@@ -237,8 +243,7 @@
           <pre>{{ config["pump_calibration"]|tojson }}</pre>
         </div>
       </div><!-- row -->
-
-    </div><!-- end Pump Control tab -->
+    </div><!-- end pumpcontrol tab -->
 
     <!-- EVENTS TAB -->
     <div class="tab-pane fade" id="events" role="tabpanel" aria-labelledby="events-tab">
@@ -273,7 +278,7 @@
 
     <!-- USAGE TAB -->
     <div class="tab-pane fade" id="usage" role="tabpanel" aria-labelledby="usage-tab">
-      <h2>Pump Usage Summary</h2>
+      <h2>Usage Summary</h2>
       {% if summary_list %}
         <table class="table table-bordered">
           <thead>
@@ -300,6 +305,108 @@
       {% endif %}
     </div>
 
+    <!-- INSIGHTS TAB -->
+    <div class="tab-pane fade" id="insights" role="tabpanel" aria-labelledby="insights-tab">
+      <h2>System Insights</h2>
+      <div class="row">
+        <!-- Card 1: Today's pH Range -->
+        <div class="col-md-4 mb-3">
+          <div class="card text-bg-light shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Today's pH Range</h5>
+              {% if daily_pH_min is not none and daily_pH_max is not none %}
+                <p class="card-text">
+                  Min: {{ daily_pH_min }}<br>
+                  Max: {{ daily_pH_max }}
+                </p>
+              {% else %}
+                <p class="card-text">No pH data for today</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Pump Usage Today -->
+        <div class="col-md-4 mb-3">
+          <div class="card text-bg-light shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Pump Usage Today</h5>
+              <p class="card-text">{{ daily_pump_usage }} seconds</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Placeholder for Alerts or Additional Stats -->
+        <div class="col-md-4 mb-3">
+          <div class="card text-bg-light shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title">Recent Alerts</h5>
+              <p class="card-text">0 (placeholder)</p>
+            </div>
+          </div>
+        </div>
+      </div><!-- row of cards -->
+
+      <hr class="my-4">
+
+      <h3>Pump Usage by Day (Stacked Bar)</h3>
+      <canvas id="pumpUsageChart" width="600" height="300"></canvas>
+      <script>
+        let usageData = {{ usage_bar_data|tojson }};
+        let pumpNames = {{ all_pumps|tojson }};
+
+        let usageLabels = usageData.map(d => d.date);
+        let colors = ["#3e95cd","#8e5ea2","#3cba9f","#e8c3b9","#c45850","#d5a3bb","#a7c2d2","#db5963"];
+
+        let datasets = pumpNames.map((pump, idx) => {
+          return {
+            label: pump,
+            data: usageData.map(dayObj => dayObj[pump] || 0),
+            backgroundColor: colors[idx % colors.length],
+            stack: "pumpStack"
+          };
+        });
+
+        new Chart(document.getElementById("pumpUsageChart"), {
+          type: 'bar',
+          data: {
+            labels: usageLabels,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true }
+            }
+          }
+        });
+      </script>
+
+      <hr class="my-4">
+
+      <h3>Recent Interesting Events</h3>
+      {% if interesting_events %}
+        <ul>
+        {% for ev in interesting_events %}
+          <li>{{ ev[0] }} - {{ ev[1] }}: {{ ev[2] }}</li>
+        {% endfor %}
+        </ul>
+        <p><a href="#" onclick="selectTab('events-tab')">View All Events</a></p>
+      {% else %}
+        <p>No interesting events found.</p>
+      {% endif %}
+
+      <script>
+      // Optional function to jump to the "Events" tab
+      function selectTab(tabId) {
+        let tabTrigger = document.getElementById(tabId);
+        let tab = new bootstrap.Tab(tabTrigger);
+        tab.show();
+      }
+      </script>
+    </div><!-- end insights tab -->
+
     <!-- CONFIG TAB -->
     <div class="tab-pane fade" id="config" role="tabpanel" aria-labelledby="config-tab">
       <h2>System Config</h2>
@@ -319,15 +426,12 @@
         </div>
         <button class="btn btn-primary">Save</button>
       </form>
-    </div>
+    </div><!-- end config tab -->
+  </div><!-- tab-content -->
+</div><!-- container -->
 
-  </div><!-- /.tab-content -->
-
-</div><!-- /.container -->
-
-<!-- Bootstrap Bundle JS (includes tab switching) -->
+<!-- Bootstrap Bundle JS (for tabs) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 </body>
 </html>
 
