@@ -13,6 +13,11 @@
     .chart-canvas {
       max-width: 100%;
       height: 400px;
+    .small-chart {
+      height: 200px !important;  /* Reduce height */
+      max-width: 100%;
+}
+
     }
     /* We'll make the usage chart smaller to match the rest */
     .usage-canvas {
@@ -181,24 +186,48 @@
 
       <hr class="my-4">
 
-      <h3>Pump Usage by Day (Stacked Bar)</h3>
-      <!-- We use .usage-canvas for smaller height -->
-      <canvas id="pumpUsageChart" class="usage-canvas"></canvas>
-      <script>
-        let usageData = {{ usage_bar_data|tojson }};
-        let pumpNames = {{ all_pumps|tojson }};
+      <<h3>Pump Usage by Day (Stacked Bar)</h3>
+<div style="width: 100%; height: 250px;">  <!-- Wrapper to constrain height -->
+  <canvas id="pumpUsageChart" class="small-chart"></canvas>
+</div>
 
-        let usageLabels = usageData.map(d => d.date);
-        let colors = ["#3e95cd","#8e5ea2","#3cba9f","#e8c3b9","#c45850","#d5a3bb","#a7c2d2","#db5963"];
+<script>
+  let usageData = {{ usage_bar_data|tojson }};
+  let pumpNames = {{ all_pumps|tojson }};
 
-        let datasets = pumpNames.map((pump, idx) => {
-          return {
-            label: pump,
-            data: usageData.map(dayObj => dayObj[pump] || 0),
-            backgroundColor: colors[idx % colors.length],
-            stack: "pumpStack"
-          };
-        });
+  let usageLabels = usageData.map(d => d.date);
+  let colors = ["#3e95cd","#8e5ea2","#3cba9f","#e8c3b9","#c45850","#d5a3bb","#a7c2d2","#db5963"];
+
+  let datasets = pumpNames.map((pump, idx) => {
+    return {
+      label: pump,
+      data: usageData.map(dayObj => dayObj[pump] || 0),
+      backgroundColor: colors[idx % colors.length],
+      stack: "pumpStack"
+    };
+  });
+
+  new Chart(document.getElementById("pumpUsageChart"), {
+    type: 'bar',
+    data: {
+      labels: usageLabels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,  // Disable default behavior
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true }
+      },
+      plugins: {
+        legend: {
+          position: "top"
+        }
+      }
+    }
+  });
+</script>
 
         new Chart(document.getElementById("pumpUsageChart"), {
           type: 'bar',
