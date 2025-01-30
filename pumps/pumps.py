@@ -2,7 +2,8 @@
 import time
 import RPi.GPIO as GPIO
 
-# Map each pump name to (enable_pin, input_pin)
+# Suppose each pump has (enable_pin, input_pin).
+# Adjust to match your wiring.
 pump_pins = {
     "pH_up":     (12, 4),
     "pH_down":   (13, 5),
@@ -12,14 +13,9 @@ pump_pins = {
 }
 
 def init_pumps():
-    """
-    Set pin numbering mode & initialize all pump pins.
-    Call once, e.g., in app.py.
-    """
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-
-    for pump_name, (en_pin, in_pin) in pump_pins.items():
+    for (en_pin, in_pin) in pump_pins.values():
         GPIO.setup(en_pin, GPIO.OUT)
         GPIO.setup(in_pin, GPIO.OUT)
         GPIO.output(en_pin, GPIO.LOW)
@@ -37,7 +33,7 @@ def pump_off(pump_name):
 
 def dose_pump(pump_name, seconds):
     """
-    Run pump_name for 'seconds' seconds (blocking).
+    Turn on the specified pump for 'seconds' duration, then off.
     """
     pump_on(pump_name)
     time.sleep(seconds)
