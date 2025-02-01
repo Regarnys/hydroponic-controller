@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import time
 from datetime import datetime
-from AtlasI2C import AtlasI2C
+from atlas_i2c import AtlasI2C
 
 class SensorReader:
     """
