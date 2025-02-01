@@ -1,147 +1,58 @@
-#!/usr/bin/env python3
+# File: sensors.py
+
 import time
-from datetime import datetime
-from atlas_i2c import AtlasI2C
+from atlas_i2c import AtlasI2C  # or from .atlas_i2c import AtlasI2C if local
+# or "from AtlasI2C import AtlasI2C" if your module is named exactly that
 
 class SensorReader:
     """
-    A more generic class to discover and read from all Atlas Scientific
-    EZO sensors on the I2C bus. This aligns with the techniques in the
-    company's sample code.
+    Updated to use AtlasI2C internally but still accept (i2c_bus, ph_address, ec_address)
+    and provide read_ph_sensor() and read_ec_sensor() methods.
     """
 
-    def __init__(self):
-        # Discover all EZO devices on the bus
-        self.device_list = self._get_ezo_devices()
+    def __init__(self, i2c_bus=1, ph_address=0x63, ec_address=0x64):
+        # Create AtlasI2C objects for each sensor
+        self.ph_dev = AtlasI2C(address=ph_address, bus=i2c_bus, moduletype="PH", name="pH_sensor")
+        self.ec_dev = AtlasI2C(address=ec_address, bus=i2c_bus, moduletype="EC", name="EC_sensor")
 
-    def _get_ezo_devices(self):
+    def read_ph_sensor(self):
         """
-        Polls the I2C bus for addresses, sends an 'I' command to check if it's
-        a recognized EZO device, and if so, queries 'name,?' to retrieve its name.
-        Returns a list of AtlasI2C device objects (one for each recognized sensor).
+        Send 'R' command to the pH device and parse the float response.
         """
-        base_device = AtlasI2C()  # A temporary device object for scanning
-        addresses = base_device.list_i2c_devices()
-        devices = []
+        try:
+            self.ph_dev.write("R")
+            time.sleep(1.5)  # let it process
+            raw_response = self.ph_dev.read()  # e.g. "Success pH_sensor: 6.87"
+            # Typically, the part after the colon is your actual reading.
+            # Let's parse that:
+            reading_str = raw_response.split(":")[-1].strip()  # e.g. "6.87"
+            return float(reading_str) if reading_str else None
+        except Exception as e:
+            print("Error reading pH sensor:", e)
+            return None
 
-        for addr in addresses:
-            base_device.set_i2c_address(addr)
-            response = base_device.query("I")
-            try:
-                # Response should look like: "EzoType,Model,Version"
-                # Typically e.g.: "OK,PMP,1.0" for a pump, or "OK,EC,1.0" for an EC sensor, etc.
-                parts = response.split(",")
-                module_type = parts[1]  # e.g. "PH", "EC", "DO", etc.
-
-                # Next, query the name
-                name_response = base_device.query("name,?")  # e.g. "name,PH_sensor"
-                name_parts = name_response.split(",")
-                sensor_name = name_parts[1]  # the actual name set on the device
-
-                # Construct a new AtlasI2C object with the known address, type, and name
-                devices.append(
-                    AtlasI2C(address=addr, moduletype=module_type, name=sensor_name)
-                )
-
-            except IndexError:
-                # If we can't parse the response properly, it likely isn't an EZO device
-                print(
-                    f">> WARNING: device at I2C address {addr} not identified as an EZO sensor."
-                )
-                continue
-
-        return devices
-
-    def read_sensors(self):
+    def read_ec_sensor(self):
         """
-        Sends an 'R' (read) command to each sensor, waits an appropriate amount of time,
-        and then fetches/returns the results in a dictionary keyed by sensor name.
+        For EC: typically we get 4 comma-separated values: EC, TDS, SAL, SG.
+        We'll parse them into a dict, e.g. {"ec": float, "tds": float, "sal": float, "sg": float}.
         """
-        # 1. Tell each sensor to take a reading
-        for dev in self.device_list:
-            dev.write("R")
-
-        # 2. Wait for the sensors to finish their readings.
-        #    Different sensors can require different wait times; you could
-        #    call dev.get_command_timeout("R") for each to be precise. For
-        #    pH/EC it's typically ~1.5 seconds. We'll just wait 1.5 sec.
-        time.sleep(1.5)
-
-        # 3. Read the output from each device
-        readings = {}
-        for dev in self.device_list:
-            raw_result = dev.read().strip()
-
-            # Parse the data depending on the sensor/module type
-            if dev.moduletype.upper() == "PH":
-                readings[dev.name] = self._parse_ph(raw_result)
-
-            elif dev.moduletype.upper() == "EC":
-                readings[dev.name] = self._parse_ec(raw_result)
-
-            # Add more elifs here for other sensor types, e.g. DO, ORP, etc.
-
+        try:
+            self.ec_dev.write("R")
+            time.sleep(1.5)
+            raw_response = self.ec_dev.read()  # e.g. "Success EC_sensor: 100.00,50.00,0.10,1.00"
+            # extract the raw numeric string
+            numeric_part = raw_response.split(":")[-1].strip()  # "100.00,50.00,0.10,1.00"
+            parts = numeric_part.split(",")
+            if len(parts) == 4:
+                ec_val  = float(parts[0])
+                tds_val = float(parts[1])
+                sal_val = float(parts[2])
+                sg_val  = float(parts[3])
+                return {"ec": ec_val, "tds": tds_val, "sal": sal_val, "sg": sg_val}
             else:
-                # If you have an unknown type, just store the raw result.
-                readings[dev.name] = {
-                    "type": dev.moduletype,
-                    "raw_data": raw_result,
-                    "warning": "Unknown EZO module type",
-                }
+                print("Unexpected EC response:", numeric_part)
+                return None
+        except Exception as e:
+            print("Error reading EC sensor:", e)
+            return None
 
-        return readings
-
-    def _parse_ph(self, raw_result):
-        """
-        Expects a single float in the raw_result, e.g. '6.87'
-        """
-        try:
-            ph_val = float(raw_result)
-            return {"pH": ph_val}
-        except ValueError:
-            return {
-                "error": f"Failed to parse pH sensor output: '{raw_result}'"
-            }
-
-    def _parse_ec(self, raw_result):
-        """
-        Expects a comma-separated string with 4 values:
-        EC, TDS, SAL, SG
-        e.g. "100.00,50.00,0.10,1.00"
-        """
-        parts = raw_result.split(",")
-        if len(parts) != 4:
-            return {"error": f"Unexpected EC response: '{raw_result}'"}
-
-        try:
-            ec_val = float(parts[0])
-            tds_val = float(parts[1])
-            sal_val = float(parts[2])
-            sg_val = float(parts[3])
-            return {
-                "EC": ec_val,
-                "TDS": tds_val,
-                "SAL": sal_val,
-                "SG": sg_val,
-            }
-        except ValueError:
-            return {
-                "error": f"Failed to parse one or more fields in EC response: '{raw_result}'"
-            }
-
-
-def main():
-    reader = SensorReader()
-
-    while True:
-        # Grab all sensor data
-        readings = reader.read_sensors()
-        print(f"\n{datetime.now()} - Current Readings:")
-        for sensor_name, sensor_data in readings.items():
-            print(f"  {sensor_name} => {sensor_data}")
-
-        # Sleep a bit before polling again
-        time.sleep(5)
-
-if __name__ == "__main__":
-    main()
