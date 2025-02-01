@@ -9,8 +9,14 @@ import threading
 
 # Pump, Logging, Sensor modules
 from pumps.pumps import init_pumps, dose_pump
-from data.logger import (init_event_log, init_sensor_log, log_event, log_sensor, start_continuous_logging)
-from sensors import SensorReader
+from data.logger import (
+    init_event_log,
+    init_sensor_log,
+    log_event,
+    log_sensor,
+    start_continuous_logging
+)
+from sensors import SensorReader  # <-- We'll rely on the revised SensorReader here
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 
 app = Flask(__name__)
@@ -121,8 +127,9 @@ def aggregate_sensor_data_for_today():
 
 def build_usage_bar_data(event_aggregator, all_pumps):
     """
-    Create a list of { date:'YYYY-MM-DD', pH_up: X, pH_down: Y, ... } for each date in aggregator.
-    Used for stacked bar chart in 'Insights'.
+    Create a list of { date:'YYYY-MM-DD', pH_up: X, pH_down: Y, ... }
+    for each date in aggregator.
+    Used for the stacked bar chart in 'Insights'.
     """
     usage_bar_data = []
     sorted_dates = sorted(event_aggregator.keys())
@@ -155,6 +162,7 @@ def get_recent_interesting_events():
             return datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
         except:
             return datetime.min
+
     all_events.sort(key=lambda x: parse_ts(x[0]), reverse=True)
 
     # filter
@@ -285,6 +293,7 @@ def dashboard():
                     ph_data.append([ts_str, val_f])
                 elif sensor_name == "EC":
                     ec_data.append([ts_str, val_f])
+    # Show only last 20 readings (example)
     ph_data = ph_data[-20:]
     ec_data = ec_data[-20:]
 
@@ -350,7 +359,8 @@ def dashboard():
             "usage": event_aggregator[date_str]
         })
 
-    return render_template("dashboard.html",
+    return render_template(
+        "dashboard.html",
         message=message,
         # For Live Data
         ph_data=ph_data,
@@ -386,6 +396,8 @@ if __name__ == "__main__":
     load_config()
 
     # 2) create sensor for continuous logging
+    #    We keep the same call. Just ensure your new SensorReader can accept
+    #    these parameters and handle them internally with AtlasI2C.
     sensor_obj = SensorReader(i2c_bus=1, ph_address=0x63, ec_address=0x64)
 
     # 3) background logging
@@ -396,4 +408,5 @@ if __name__ == "__main__":
 
     # 4) run the Flask server
     app.run(host="0.0.0.0", port=5001, debug=True)
+
 
