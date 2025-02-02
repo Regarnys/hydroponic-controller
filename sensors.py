@@ -1,106 +1,131 @@
 #!/usr/bin/env python3
 
 import time
-from atlas_i2c import AtlasI2C  # Adjust if your file is named differently
+from atlas_i2c import AtlasI2C  # Uses the Atlas I2C driver
 
 class SensorReader:
     """
-    A sensor-reading class that communicates with two Atlas Scientific EZO
-    circuits (pH and EC). It uses the AtlasI2C driver, handles null-terminations,
-    and checks the sensor status codes before converting to floats.
+    A class for reading pH and EC values using Atlas Scientific EZO sensors.
+    Uses the AtlasI2C driver, checks sensor status, and handles formatting.
     """
 
     def __init__(self, i2c_bus=1, ph_address=0x63, ec_address=0x64):
         """
-        :param i2c_bus: Which I2C bus to use (default 1 on Raspberry Pi).
-        :param ph_address: I2C address for the pH sensor (default 0x63).
-        :param ec_address: I2C address for the EC sensor (default 0x64).
+        :param i2c_bus: The I2C bus to use (default 1 on Raspberry Pi).
+        :param ph_address: The I2C address for the pH sensor (default 0x63).
+        :param ec_address: The I2C address for the EC sensor (default 0x64).
         """
-        # Create two AtlasI2C device objects, one for pH, one for EC
         self.ph_dev = AtlasI2C(address=ph_address, bus=i2c_bus, moduletype="PH", name="pH_sensor")
         self.ec_dev = AtlasI2C(address=ec_address, bus=i2c_bus, moduletype="EC", name="EC_sensor")
 
-    def read_ph_sensor(self):
+        # Wake up sensors on startup
+        self.wake_up_sensors()
+
+    def wake_up_sensors(self):
         """
-        Sends an 'R' (read) command to the pH device, then parses the returned float.
-        If status = 254/255 or if parsing fails, returns None.
-        """
-        try:
-            # 1) Request a reading
-            self.ph_dev.write("R")
-            time.sleep(1.5)  # allow the sensor time to process
-
-            # 2) Read the raw string from the device
-            raw_response = self.ph_dev.read()  
-            # e.g. "Success pH_sensor: 7.936\x00\x00\x00..." or "Error pH_sensor: 255"
-
-            # 3) Extract just what's after the colon
-            #    e.g. "7.936\x00\x00\x00..."
-            reading_str = raw_response.split(":", 1)[-1]
-            # Remove null chars, strip whitespace
-            reading_str = reading_str.replace("\x00", "").strip()
-
-            # 4) Check for known "no data" status codes
-            if reading_str in ["254", "255"]:
-                # 254 => busy, 255 => no data
-                print("pH sensor returned status", reading_str, "=> skipping reading.")
-                return None
-
-            # 5) Convert to float
-            return float(reading_str)
-
-        except Exception as e:
-            print("Error reading pH sensor:", e)
-            return None
-
-    def read_ec_sensor(self):
-        """
-        Sends an 'R' command to the EC device, which typically returns 4 comma-separated values:
-          EC, TDS, SAL, SG
-        Example: "Success EC_sensor: 100.00,50.00,0.10,1.00"
-        If the device is busy or has no data, we might see "254" / "255" or partial results.
-        Returns a dict: {"ec": float, "tds": float, "sal": float, "sg": float} or None if error.
+        Sends a wake-up command to ensure sensors are ready.
+        Atlas sensors sometimes go into sleep mode when idle.
         """
         try:
-            # 1) Request a reading
-            self.ec_dev.write("R")
-            time.sleep(1.5)
-
-            # 2) Read the raw string
-            raw_response = self.ec_dev.read()
-            # e.g. "Success EC_sensor: 100.00,50.00,0.10,1.00"
-            # or "Success EC_sensor: 255"
-
-            # 3) Get everything after the colon, remove nulls, strip
-            reading_str = raw_response.split(":", 1)[-1]
-            reading_str = reading_str.replace("\x00", "").strip()
-
-            # 4) Check status
-            if reading_str in ["254", "255"]:
-                print("EC sensor returned status", reading_str, "=> skipping reading.")
-                return None
-
-            # 5) Parse comma-separated fields
-            parts = reading_str.split(",")
-            if len(parts) == 4:
-                ec_val  = float(parts[0])
-                tds_val = float(parts[1])
-                sal_val = float(parts[2])
-                sg_val  = float(parts[3])
-                return {"ec": ec_val, "tds": tds_val, "sal": sal_val, "sg": sg_val}
-            else:
-                print("Unexpected EC response:", reading_str)
-                return None
-
+            self.ph_dev.write("L,1")  # Enable LED (indicates sensor is awake)
+            self.ec_dev.write("L,1")
+            time.sleep(1)  # Allow time to wake up
         except Exception as e:
-            print("Error reading EC sensor:", e)
-            return None
+            print("Error waking up sensors:", e)
+
+    def read_ph_sensor(self, retries=3):
+        """
+        Reads pH sensor value. If busy or no data (status 254/255), retries.
+        Returns a float pH value or None if error.
+        """
+        for attempt in range(retries):
+            try:
+                self.ph_dev.write("R")  # Send read command
+                time.sleep(1.8)  # Allow processing time
+
+                raw_response = self.ph_dev.read()
+                reading_str = raw_response.split(":", 1)[-1].replace("\x00", "").strip()
+
+                # Handle error codes
+                if reading_str in ["254", "255"]:
+                    print(f"pH sensor status {reading_str} (Attempt {attempt+1}/{retries})... retrying.")
+                    time.sleep(0.5)
+                    continue  # Retry
+
+                return float(reading_str)
+
+            except Exception as e:
+                print("Error reading pH sensor:", e)
+
+        print("pH sensor failed after multiple attempts.")
+        return None
+
+    def read_ec_sensor(self, retries=3):
+        """
+        Reads EC sensor value. Parses EC, TDS, SAL, SG.
+        Returns a dictionary {ec, tds, sal, sg} or None if error.
+        """
+        for attempt in range(retries):
+            try:
+                self.ec_dev.write("R")
+                time.sleep(2)  # Allow processing time
+
+                raw_response = self.ec_dev.read()
+                reading_str = raw_response.split(":", 1)[-1].replace("\x00", "").strip()
+
+                # Handle error codes
+                if reading_str in ["254", "255"]:
+                    print(f"EC sensor status {reading_str} (Attempt {attempt+1}/{retries})... retrying.")
+                    time.sleep(0.5)
+                    continue  # Retry
+
+                # Parse comma-separated values (EC, TDS, SAL, SG)
+                parts = reading_str.split(",")
+                if len(parts) == 4:
+                    return {
+                        "ec": float(parts[0]),
+                        "tds": float(parts[1]),
+                        "sal": float(parts[2]),
+                        "sg":  float(parts[3])
+                    }
+                else:
+                    print(f"Unexpected EC response: {reading_str} (Attempt {attempt+1}/{retries})... retrying.")
+                    time.sleep(0.5)
+                    continue  # Retry
+
+            except Exception as e:
+                print("Error reading EC sensor:", e)
+
+        print("EC sensor failed after multiple attempts.")
+        return None
 
     def close(self):
         """
-        Closes I2C file handles. Call this when you're done if needed.
+        Closes I2C connections. Use this when done.
         """
         self.ph_dev.close()
         self.ec_dev.close()
+
+
+# **Example Test Script**
+if __name__ == "__main__":
+    sensor = SensorReader()
+
+    print("==== Sensor Test ====")
+    ph_val = sensor.read_ph_sensor()
+    ec_data = sensor.read_ec_sensor()
+
+    if ph_val is not None:
+        print(f"pH Value: {ph_val:.2f}")
+    else:
+        print("pH reading failed.")
+
+    if ec_data is not None:
+        print(f"EC Value: {ec_data['ec']:.2f}")
+    else:
+        print("EC reading failed.")
+
+    sensor.close()
+
 
 
