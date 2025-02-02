@@ -7,7 +7,7 @@ import json
 from datetime import datetime
 import threading
 
-# Pump, Logging, Sensor modules
+# Pump, Logging, and Sensor modules
 from pumps.pumps import init_pumps, dose_pump
 from data.logger import (
     init_event_log,
@@ -16,7 +16,7 @@ from data.logger import (
     log_sensor,
     start_continuous_logging
 )
-from sensors import SensorReader  # <-- We'll rely on the revised SensorReader here
+from sensors import SensorReader  # Uses the updated AtlasI2C-based code
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 
 app = Flask(__name__)
@@ -396,8 +396,8 @@ if __name__ == "__main__":
     load_config()
 
     # 2) create sensor for continuous logging
-    #    We keep the same call. Just ensure your new SensorReader can accept
-    #    these parameters and handle them internally with AtlasI2C.
+    #    Must match the new SensorReader's init signature with i2c_bus,
+    #    ph_address, and ec_address.
     sensor_obj = SensorReader(i2c_bus=1, ph_address=0x63, ec_address=0x64)
 
     # 3) background logging
@@ -408,5 +408,6 @@ if __name__ == "__main__":
 
     # 4) run the Flask server
     app.run(host="0.0.0.0", port=5001, debug=True)
+
 
 
