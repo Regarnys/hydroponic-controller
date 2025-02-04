@@ -48,7 +48,7 @@ def save_config():
 def aggregate_event_data():
     """
     Reads hydro_events.csv, aggregates daily usage in seconds per pump.
-    Returns dict: { 'YYYY-MM-DD': {'pH_up':4.0, 'nutrientA':2.0, ...}, ... }
+    Returns dict: { 'YYYY-MM-DD': {'pH_up': 4.0, 'nutrientA': 2.0, ...}, ... }
     """
     csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
     if not os.path.exists(csv_path):
@@ -61,12 +61,13 @@ def aggregate_event_data():
         for row in reader:
             if len(row) < 3:
                 continue
-            timestamp_str, event_type, details = row
+            # Only unpack the first three columns even if more exist
+            timestamp_str, event_type, details = row[:3]
             date_str = timestamp_str.split(" ")[0]
 
             pump_name = None
             usage_seconds = 0.0
-            # parse lines like "pH_up for 2s"
+
             if " for " in details and details.endswith("s"):
                 try:
                     parts = details.split(" for ")
@@ -87,6 +88,7 @@ def aggregate_event_data():
             aggregator[date_str][pump_name] += usage_seconds
 
     return aggregator
+
 
 def aggregate_sensor_data_for_today():
     """
