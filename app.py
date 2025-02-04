@@ -48,7 +48,7 @@ def save_config():
 def aggregate_event_data():
     """
     Reads hydro_events.csv, aggregates daily usage in seconds per pump.
-    Returns dict: { 'YYYY-MM-DD': {'pH_up': 4.0, 'nutrientA': 2.0, ...}, ... }
+    Returns dict: { 'YYYY-MM-DD': {'pH_up':4.0, 'nutrientA':2.0, ...}, ... }
     """
     csv_path = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
     if not os.path.exists(csv_path):
@@ -57,22 +57,29 @@ def aggregate_event_data():
     aggregator = {}
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.reader(f)
-        header = next(reader, None)
+        header = next(reader, None)  # Skip the header row
         for row in reader:
-            if len(row) < 3:
+            if len(row) < 2:  # Ensure at least timestamp and event_type exist
                 continue
-            # Only unpack the first three columns even if more exist
-            timestamp_str, event_type, details = row[:3]
+            
+            # Extract timestamp and event_type correctly
+            timestamp_str = row[0]
+            event_type = row[1]
+            
+            # Join everything else as the details column (to handle commas)
+            details = ",".join(row[2:]).strip()
+
             date_str = timestamp_str.split(" ")[0]
 
             pump_name = None
             usage_seconds = 0.0
 
+            # parse "pH_up for 2s" or similar
             if " for " in details and details.endswith("s"):
                 try:
                     parts = details.split(" for ")
                     pump_part = parts[0].strip()
-                    sec_str = parts[1][:-1].strip()  # remove trailing 's'
+                    sec_str = parts[1][:-1].strip()  # Remove trailing 's'
                     usage_seconds = float(sec_str)
                     pump_name = pump_part
                 except:
