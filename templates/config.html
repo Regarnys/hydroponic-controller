@@ -1,17 +1,22 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>System Config</title>
-</head>
-<body>
-<h1>System Config</h1>
+{% extends "base.html" %}
+{% block content %}
+<h1>System Configuration</h1>
+{% if message %}
+  <div class="alert alert-info">{{ message }}</div>
+{% endif %}
 <form method="POST">
-  <label>pH Min: <input type="text" name="ph_min" value="{{ config.ph_min }}"></label><br><br>
-  <label>pH Max: <input type="text" name="ph_max" value="{{ config.ph_max }}"></label><br><br>
-  <label>EC Min: <input type="text" name="ec_min" value="{{ config.ec_min }}"></label><br><br>
-  <button type="submit">Save</button>
+  <div class="mb-3">
+    <label for="ph_min" class="form-label">pH Min</label>
+    <input type="text" class="form-control" id="ph_min" name="ph_min" value="{{ config.ph_min }}">
+  </div>
+  <div class="mb-3">
+    <label for="ph_max" class="form-label">pH Max</label>
+    <input type="text" class="form-control" id="ph_max" name="ph_max" value="{{ config.ph_max }}">
+  </div>
+  <div class="mb-3">
+    <label for="ec_min" class="form-label">EC Min</label>
+    <input type="text" class="form-control" id="ec_min" name="ec_min" value="{{ config.ec_min }}">
+  </div>
+  <button type="submit" class="btn btn-primary">Save</button>
 </form>
-<p><a href="{{ url_for('index') }}">Back to Home</a></p>
-</body>
-</html>
+{% endblock %}
