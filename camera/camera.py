@@ -32,27 +32,27 @@ class PlantCamera:
     def setup_camera(self):
     """Initialize the Pi Camera with optimal settings for plants"""
     max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            if self._picam:
-                self._picam.close()
+        for attempt in range(max_retries):
+            try:
+                if self._picam:
+                    self._picam.close()
             
-            time.sleep(2)  # Give camera time to release
-            self._picam = Picamera2()
+                time.sleep(2)  # Give camera time to release
+                self._picam = Picamera2()
             
-            config = self._picam.create_preview_configuration(
-                main={"size": self.resolution},
-                buffer_count=2
-            )
-            self._picam.configure(config)
+                config = self._picam.create_preview_configuration(
+                    main={"size": self.resolution},
+                    buffer_count=2
+                )
+                self._picam.configure(config)
             
-            # Configure camera for good plant imaging
-            self._picam.set_controls({
-                "ExposureTime": 10000,  # 10ms exposure
-                "AnalogueGain": 1.0,    # Base ISO
-                "AeEnable": True,       # Auto exposure
-                "AwbEnable": True,      # Auto white balance
-            })
+                # Configure camera for good plant imaging
+                self._picam.set_controls({
+                    "ExposureTime": 10000,  # 10ms exposure
+                    "AnalogueGain": 1.0,    # Base ISO
+                    "AeEnable": True,       # Auto exposure
+                    "AwbEnable": True,      # Auto white balance
+                })
             
             return True
         except Exception as e:
