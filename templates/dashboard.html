@@ -16,6 +16,7 @@
     }
     .small-chart {
       height: 200px !important;
+      max-width: 100%;
     }
     .usage-canvas {
       max-width: 100%;
@@ -43,62 +44,51 @@
     <div class="alert alert-info">{{ message }}</div>
   {% endif %}
 
+  <!-- Nav Tabs -->
   <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="livedata-tab" data-bs-toggle="tab"
               data-bs-target="#livedata" type="button" role="tab"
-              aria-controls="livedata" aria-selected="true">
-        Live Data
-      </button>
+              aria-controls="livedata" aria-selected="true">Live Data</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="camera-tab" data-bs-toggle="tab"
               data-bs-target="#camera" type="button" role="tab"
-              aria-controls="camera" aria-selected="false">
-        Camera
-      </button>
+              aria-controls="camera" aria-selected="false">Camera</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="insights-tab" data-bs-toggle="tab"
               data-bs-target="#insights" type="button" role="tab"
-              aria-controls="insights" aria-selected="false">
-        Insights
-      </button>
+              aria-controls="insights" aria-selected="false">Insights</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="pumpcontrol-tab" data-bs-toggle="tab"
               data-bs-target="#pumpcontrol" type="button" role="tab"
-              aria-controls="pumpcontrol" aria-selected="false">
-        Pump Control
-      </button>
+              aria-controls="pumpcontrol" aria-selected="false">Pump Control</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="events-tab" data-bs-toggle="tab"
               data-bs-target="#events" type="button" role="tab"
-              aria-controls="events" aria-selected="false">
-        Events
-      </button>
+              aria-controls="events" aria-selected="false">Events</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="usage-tab" data-bs-toggle="tab"
               data-bs-target="#usage" type="button" role="tab"
-              aria-controls="usage" aria-selected="false">
-        Usage
-      </button>
+              aria-controls="usage" aria-selected="false">Usage</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="config-tab" data-bs-toggle="tab"
               data-bs-target="#config" type="button" role="tab"
-              aria-controls="config" aria-selected="false">
-        Config
-      </button>
+              aria-controls="config" aria-selected="false">Config</button>
     </li>
   </ul>
 
+  <!-- Tab Content -->
   <div class="tab-content mt-3" id="dashboardTabsContent">
+
     <!-- LIVE DATA TAB -->
     <div class="tab-pane fade show active" id="livedata" role="tabpanel" aria-labelledby="livedata-tab">
-      <h2>pH & EC Charts (last 20 points)</h2>
+      <h2>pH &amp; EC Charts (last 20 points)</h2>
       <div class="row">
         <div class="col-md-6">
           <canvas id="phChart" class="chart-canvas"></canvas>
@@ -107,36 +97,33 @@
           <canvas id="ecChart" class="chart-canvas"></canvas>
         </div>
       </div>
-
-      <h3 class="mt-4">Auto Dosing Test</h3>
+      <hr class="my-4">
+      <h3>Auto Dosing Test</h3>
       <form method="POST">
         <input type="hidden" name="action" value="auto_dosing_test">
-        <button class="btn btn-warning">Read & Log Sensors + Basic Dosing Logic</button>
+        <button class="btn btn-warning">Read &amp; Log Sensors + Basic Dosing Logic</button>
       </form>
     </div>
 
     <!-- CAMERA TAB -->
     <div class="tab-pane fade" id="camera" role="tabpanel" aria-labelledby="camera-tab">
       <div class="row mt-3">
-        <!-- Live Feed -->
+        <!-- Live Feed Column -->
         <div class="col-md-8">
           <div class="card">
             <div class="card-header">
               <h5 class="card-title">Live Plant Camera</h5>
             </div>
             <div class="card-body">
-              <img src="{{ url_for('video_feed') }}" class="camera-feed rounded">
+              <img src="{{ url_for('video_feed') }}" class="camera-feed rounded" alt="Live Camera Feed">
             </div>
             <div class="card-footer">
               <button class="btn btn-primary" onclick="takeSnapshot()">Take Snapshot</button>
-              <button class="btn btn-secondary" id="timelapseBtn" onclick="toggleTimelapse()">
-                Start Timelapse
-              </button>
+              <button class="btn btn-secondary" id="timelapseBtn" onclick="toggleTimelapse()">Start Timelapse</button>
             </div>
           </div>
         </div>
-
-        <!-- Recent Snapshots -->
+        <!-- Recent Snapshots & Plant Analysis Column -->
         <div class="col-md-4">
           <div class="card">
             <div class="card-header">
@@ -144,12 +131,10 @@
             </div>
             <div class="card-body">
               <div id="snapshots-list" class="list-group">
-                <!-- Snapshots will be loaded here -->
+                <!-- Snapshot links will be inserted here -->
               </div>
             </div>
           </div>
-
-          <!-- Plant Analysis -->
           <div class="card mt-3">
             <div class="card-header">
               <h5 class="card-title">Plant Analysis</h5>
@@ -163,32 +148,26 @@
           </div>
         </div>
       </div>
-
-      <!-- Automation Settings -->
+      <!-- Automation Settings Card -->
       <div class="card mt-4">
         <div class="card-header">
           <h5 class="card-title">Automation Settings</h5>
         </div>
         <div class="card-body">
           <form id="automation-settings-form">
-            <!-- Image Capture Schedule -->
+            <!-- Image Capture Interval -->
             <div class="mb-3">
               <label class="form-label">Image Capture Interval (minutes)</label>
-              <input type="number" class="form-control" id="image-capture-interval" 
-                     min="1" max="1440" value="60">
+              <input type="number" class="form-control" id="image-capture-interval" min="1" max="1440" value="60">
             </div>
-
             <!-- Timelapse Settings -->
             <div class="mb-3">
               <label class="form-label">Timelapse Settings</label>
               <div class="input-group">
-                <input type="number" class="form-control" id="timelapse-interval" 
-                       placeholder="Interval (minutes)" value="60">
-                <input type="number" class="form-control" id="timelapse-duration" 
-                       placeholder="Duration (hours)" value="24">
+                <input type="number" class="form-control" id="timelapse-interval" placeholder="Interval (minutes)" value="60">
+                <input type="number" class="form-control" id="timelapse-duration" placeholder="Duration (hours)" value="24">
               </div>
             </div>
-
             <!-- Plant Health Monitoring -->
             <div class="mb-3">
               <div class="form-check form-switch">
@@ -197,12 +176,10 @@
               </div>
               <div class="input-group mt-2">
                 <span class="input-group-text">Alert if green coverage below</span>
-                <input type="number" class="form-control" id="min-green-percent" 
-                       value="30" min="0" max="100">
+                <input type="number" class="form-control" id="min-green-percent" value="30" min="0" max="100">
                 <span class="input-group-text">%</span>
               </div>
             </div>
-
             <button type="submit" class="btn btn-primary">Save Settings</button>
           </form>
         </div>
@@ -213,7 +190,7 @@
     <div class="tab-pane fade" id="insights" role="tabpanel" aria-labelledby="insights-tab">
       <h2>System Insights</h2>
       <div class="row">
-        <!-- Card 1: Today's pH Range -->
+        <!-- Today's pH Range -->
         <div class="col-md-4 mb-3">
           <div class="card text-bg-light shadow-sm">
             <div class="card-body">
@@ -229,8 +206,7 @@
             </div>
           </div>
         </div>
-
-        <!-- Card 2: Pump Usage Today -->
+        <!-- Pump Usage Today -->
         <div class="col-md-4 mb-3">
           <div class="card text-bg-light shadow-sm">
             <div class="card-body">
@@ -239,8 +215,7 @@
             </div>
           </div>
         </div>
-
-        <!-- Card 3: Plant Health -->
+        <!-- Plant Health Status -->
         <div class="col-md-4 mb-3">
           <div class="card text-bg-light shadow-sm">
             <div class="card-body">
@@ -250,299 +225,428 @@
           </div>
         </div>
       </div>
-
       <hr class="my-4">
-
       <h3>Pump Usage by Day</h3>
       <div style="width: 100%; height: 250px;">
         <canvas id="pumpUsageChart" class="small-chart"></canvas>
       </div>
-
       <hr class="my-4">
-
       <h3>Recent Interesting Events</h3>
       {% if interesting_events %}
         <ul class="list-group">
-        {% for ev in interesting_events %}
-          <li class="list-group-item">
-            <small class="text-muted">{{ ev[0] }}</small><br>
-            <strong>{{ ev[1] }}:</strong> {{ ev[2] }}
-          </li>
-        {% endfor %}
+          {% for ev in interesting_events %}
+            <li class="list-group-item">
+              <small class="text-muted">{{ ev[0] }}</small><br>
+              <strong>{{ ev[1] }}:</strong> {{ ev[2] }}
+            </li>
+          {% endfor %}
         </ul>
+        <p><a href="#" onclick="selectTab('events-tab')">View All Events</a></p>
       {% else %}
         <p>No interesting events found.</p>
       {% endif %}
     </div>
 
-    <!-- Your existing PUMP CONTROL, EVENTS, USAGE, and CONFIG tabs remain the same -->
-    <!-- Keep all your existing tabs here -->
+    <!-- PUMP CONTROL TAB -->
+    <div class="tab-pane fade" id="pumpcontrol" role="tabpanel" aria-labelledby="pumpcontrol-tab">
+      <h2>Pump Control</h2>
+      <p>Manually run pumps or calibrate them below.</p>
+      <div class="row">
+        <!-- Manual Pump -->
+        <div class="col-md-6 mb-3">
+          <h3>Manual Pump (Seconds)</h3>
+          <form method="POST">
+            <input type="hidden" name="action" value="manual_pump">
+            <div class="mb-2">
+              <label for="pump_name" class="form-label">Pump:</label>
+              <select name="pump_name" id="pump_name" class="form-select w-auto d-inline">
+                <option>pH_up</option>
+                <option>pH_down</option>
+                <option>nutrientA</option>
+                <option>nutrientB</option>
+                <option>nutrientC</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label for="run_seconds" class="form-label">Seconds:</label>
+              <input type="text" name="run_seconds" id="run_seconds" value="5" class="form-control w-auto d-inline">
+            </div>
+            <button class="btn btn-primary">Run Pump</button>
+          </form>
+        </div>
+        <!-- Volume-based Dosing -->
+        <div class="col-md-6 mb-3">
+          <h3>Volume-based Dosing</h3>
+          <form method="POST">
+            <input type="hidden" name="action" value="volume_dose">
+            <div class="mb-2">
+              <label class="form-label">Pump:</label>
+              <select name="pump_name" class="form-select w-auto d-inline">
+                <option>pH_up</option>
+                <option>pH_down</option>
+                <option>nutrientA</option>
+                <option>nutrientB</option>
+                <option>nutrientC</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Volume (mL):</label>
+              <input type="text" name="ml_amount" value="10" class="form-control w-auto d-inline">
+            </div>
+            <button class="btn btn-success">Dose Volume</button>
+          </form>
+        </div>
+      </div>
+      <hr class="my-4">
+      <div class="row">
+        <!-- Calibration Test Run -->
+        <div class="col-md-6 mb-3">
+          <h3>Calibration: Test Run</h3>
+          <form method="POST">
+            <input type="hidden" name="action" value="cal_test_run">
+            <div class="mb-2">
+              <label class="form-label">Pump:</label>
+              <select name="pump_name" class="form-select w-auto d-inline">
+                <option>pH_up</option>
+                <option>pH_down</option>
+                <option>nutrientA</option>
+                <option>nutrientB</option>
+                <option>nutrientC</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Seconds:</label>
+              <input type="text" name="cal_test_seconds" value="5" class="form-control w-auto d-inline">
+            </div>
+            <button class="btn btn-secondary">Run Pump</button>
+          </form>
+        </div>
+        <!-- Calibration Save -->
+        <div class="col-md-6 mb-3">
+          <h3>Calibration: Save Measurement</h3>
+          <form method="POST">
+            <input type="hidden" name="action" value="cal_save">
+            <div class="mb-2">
+              <label class="form-label">Pump:</label>
+              <select name="pump_name" class="form-select w-auto d-inline">
+                <option>pH_up</option>
+                <option>pH_down</option>
+                <option>nutrientA</option>
+                <option>nutrientB</option>
+                <option>nutrientC</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Seconds (same used above):</label>
+              <input type="text" name="cal_test_seconds" value="5" class="form-control w-auto d-inline">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Measured mL:</label>
+              <input type="text" name="measured_ml" value="0" class="form-control w-auto d-inline">
+            </div>
+            <button class="btn btn-info">Save Calibration</button>
+          </form>
+          <h5 class="mt-3">Current Calibration</h5>
+          <pre>{{ config["pump_calibration"]|tojson }}</pre>
+        </div>
+      </div>
+    </div>
 
-  </div>
-</div>
+    <!-- EVENTS TAB -->
+    <div class="tab-pane fade" id="events" role="tabpanel" aria-labelledby="events-tab">
+      <h2>Recent Events</h2>
+      {% if event_rows %}
+        <table class="table table-striped">
+          <thead>
+            <tr><th>Timestamp</th><th>Event</th><th>Details</th></tr>
+          </thead>
+          <tbody>
+            {% for row in event_rows %}
+            <tr>
+              <td>{{ row[0] }}</td>
+              <td>{{ row[1] }}</td>
+              <td>{{ row[2] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p>
+          {% if has_prev_page %}
+            <a href="{{ url_for('dashboard', page=(current_page-1)) }}">Prev</a>
+          {% endif %}
+          {% if has_next_page %}
+            <a href="{{ url_for('dashboard', page=(current_page+1)) }}">Next</a>
+          {% endif %}
+        </p>
+      {% else %}
+        <p>No events found.</p>
+      {% endif %}
+    </div>
+
+    <!-- USAGE TAB -->
+    <div class="tab-pane fade" id="usage" role="tabpanel" aria-labelledby="usage-tab">
+      <h2>Usage Summary</h2>
+      {% if summary_list %}
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Date</th>
+              {% for p in all_pumps %}
+                <th>{{ p }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for day_data in summary_list %}
+            <tr>
+              <td>{{ day_data.date }}</td>
+              {% for p in all_pumps %}
+                <td>{{ day_data.usage.get(p, 0) }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>No aggregator data yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- CONFIG TAB -->
+    <div class="tab-pane fade" id="config" role="tabpanel" aria-labelledby="config-tab">
+      <h2>System Config</h2>
+      <form method="POST">
+        <input type="hidden" name="action" value="update_config">
+        <div class="mb-2">
+          <label class="form-label">pH Min:</label>
+          <input type="text" name="ph_min" value="{{ config.ph_min }}" class="form-control">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">pH Max:</label>
+          <input type="text" name="ph_max" value="{{ config.ph_max }}" class="form-control">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">EC Min:</label>
+          <input type="text" name="ec_min" value="{{ config.ec_min }}" class="form-control">
+        </div>
+        <button class="btn btn-primary">Save</button>
+      </form>
+    </div>
+
+  </div><!-- end tab-content -->
+</div><!-- end container -->
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Charts and Data Processing -->
+<!-- Charts and Dashboard JS -->
 <script>
-// Your existing chart initialization code
-let phData = {{ ph_data|tojson }};
-let ecData = {{ ec_data|tojson }};
+  // Initialize pH and EC Charts
+  const phData = {{ ph_data|tojson }};
+  const ecData = {{ ec_data|tojson }};
+  const phLabels = phData.map(d => d[0]);
+  const phValues = phData.map(d => d[1]);
+  const ecLabels = ecData.map(d => d[0]);
+  const ecValues = ecData.map(d => d[1]);
 
-let phLabels = phData.map(d => d[0]);
-let phValues = phData.map(d => d[1]);
-let ecLabels = ecData.map(d => d[0]);
-let ecValues = ecData.map(d => d[1]);
-
-// pH Chart
-let phCtx = document.getElementById("phChart").getContext('2d');
-new Chart(phCtx, {
+  const phCtx = document.getElementById("phChart").getContext('2d');
+  new Chart(phCtx, {
     type: 'line',
     data: {
-        labels: phLabels,
-        datasets: [{
-            label: "pH",
-            data: phValues,
-            borderColor: 'blue',
-            fill: false
-        }]
+      labels: phLabels,
+      datasets: [{
+        label: "pH",
+        data: phValues,
+        borderColor: 'blue',
+        fill: false
+      }]
     },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false
-    }
-});
+    options: { responsive: true, maintainAspectRatio: false }
+  });
 
-// EC Chart
-let ecCtx = document.getElementById("ecChart").getContext('2d');
-new Chart(ecCtx, {
+  const ecCtx = document.getElementById("ecChart").getContext('2d');
+  new Chart(ecCtx, {
     type: 'line',
     data: {
-        labels: ecLabels,
-        datasets: [{
-            label: "EC",
-            data: ecValues,
-            borderColor: 'green',
-            fill: false
-        }]
+      labels: ecLabels,
+      datasets: [{
+        label: "EC",
+        data: ecValues,
+        borderColor: 'green',
+        fill: false
+      }]
     },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false
-    }
-});
+    options: { responsive: true, maintainAspectRatio: false }
+  });
 
-// Pump Usage Chart
-let usageData = {{ usage_bar_data|tojson }};
-let pumpNames = {{ all_pumps|tojson }};
+  // Initialize Pump Usage Chart
+  const usageData = {{ usage_bar_data|tojson }};
+  const pumpNames = {{ all_pumps|tojson }};
+  const usageLabels = usageData.map(d => d.date);
+  const colors = ["#3e95cd", "#8e5ea2", "#3cba9f", "#e8c3b9", "#c45850", "#d5a3bb", "#a7c2d2", "#db5963"];
 
-let usageLabels = usageData.map(d => d.date);
-let colors = ["#3e95cd","#8e5ea2","#3cba9f","#e8c3b9","#c45850","#d5a3bb","#a7c2d2","#db5963"];
-
-let datasets = pumpNames.map((pump, idx) => {
+  const datasets = pumpNames.map((pump, idx) => {
     return {
-        label: pump,
-        data: usageData.map(dayObj => dayObj[pump] || 0),
-        backgroundColor: colors[idx % colors.length],
-        stack: "pumpStack"
+      label: pump,
+      data: usageData.map(dayObj => dayObj[pump] || 0),
+      backgroundColor: colors[idx % colors.length],
+      stack: "pumpStack"
     };
-});
+  });
 
-new Chart(document.getElementById("pumpUsageChart"), {
+  const pumpUsageCtx = document.getElementById("pumpUsageChart").getContext('2d');
+  new Chart(pumpUsageCtx, {
     type: 'bar',
     data: {
-        labels: usageLabels,
-        datasets: datasets
+      labels: usageLabels,
+      datasets: datasets
     },
     options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            x: { stacked: true },
-            y: { stacked: true }
-        }
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true }
+      }
     }
-});
+  });
 
-// Camera and Automation Controls
-function takeSnapshot() {
+  // Function to switch to a tab (used for "View All Events")
+  function selectTab(tabId) {
+    const tabTrigger = document.getElementById(tabId);
+    const tab = new bootstrap.Tab(tabTrigger);
+    tab.show();
+  }
+
+  // Camera & Automation Controls
+  function takeSnapshot() {
     fetch('/take_snapshot', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                loadRecentSnapshots();
-                alert('Snapshot taken!');
-            } else {
-                alert('Error taking snapshot: ' + data.message);
-            }
-        })
-        .catch(error => alert('Error: ' + error));
-}
-
-function loadRecentSnapshots() {
-    fetch('/snapshots')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const list = document.getElementById('snapshots-list');
-                list.innerHTML = '';
-                data.snapshots.forEach(snapshot => {
-                    const item = document.createElement('a');
-                    item.href = `/snapshots/${snapshot}`;
-                    item.className = 'list-group-item list-group-item-action';
-                    item.textContent = snapshot;
-                    list.appendChild(item);
-                });
-            }
-        });
-}
-
-let timelapseActive = false;
-function toggleTimelapse() {
-    const btn = document.getElementById('timelapseBtn');
-    if (!timelapseActive) {
-        fetch('/automation/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                'schedules': {
-                    'timelapse': {
-                        'enabled': true,
-                        'interval_minutes': parseInt(document.getElementById('timelapse-interval').value),
-                        'duration_hours': parseInt(document.getElementById('timelapse-duration').value)
-                    }
-                }
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                timelapseActive = true;
-                btn.textContent = 'Stop Timelapse';
-                btn.classList.replace('btn-secondary', 'btn-danger');
-            }
-        });
-    } else {
-        fetch('/automation/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                'schedules': {
-                    'timelapse': {
-                        'enabled': false
-                    }
-                }
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                timelapseActive = false;
-                btn.textContent = 'Start Timelapse';
-                btn.classList.replace('btn-danger', 'btn-secondary');
-            }
-        });
-    }
-}
-
-// Load initial data and start periodic updates
-document.addEventListener('DOMContentLoaded', function() {
-    loadRecentSnapshots();
-    
-    // Load automation settings
-    fetch('/automation/status')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const config = data.config;
-                document.getElementById('image-capture-interval').value = 
-                    config.schedules.image_capture.interval_minutes;
-                document.getElementById('health-monitoring-enabled').checked = 
-                    config.triggers.plant_health.enabled;
-                document.getElementById('min-green-percent').value = 
-                    config.triggers.plant_health.thresholds.min_green_percent;
-            }
-        });
-
-    // Update plant health periodically
-    function updatePlantHealth() {
-        const healthCard = document.getElementById('plant-health-card');
-        const greenPercent = document.getElementById('green-percent');
-        const lastAnalysis = document.getElementById('last-analysis');
-        
-        fetch('/automation/status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success' && data.plant_health) {
-                    const health = data.plant_health;
-                    greenPercent.textContent = health.green_percentage.toFixed(1);
-                    lastAnalysis.textContent = new Date(health.timestamp).toLocaleString();
-                    
-                    // Update health card in insights tab
-                    const coverage = health.green_percentage;
-                    let status = 'Good';
-                    let color = 'text-success';
-                    
-                    if (coverage < 30) {
-                        status = 'Poor';
-                        color = 'text-danger';
-                    } else if (coverage < 60) {
-                        status = 'Fair';
-                        color = 'text-warning';
-                    }
-                    
-                    healthCard.innerHTML = `
-                        <p class="${color}">Status: ${status}</p>
-                        <p>Green Coverage: ${coverage.toFixed(1)}%</p>
-                        <small class="text-muted">Updated: ${new Date(health.timestamp).toLocaleString()}</small>
-                    `;
-                }
-            });
-    }
-
-    // Update every 5 minutes
-    updatePlantHealth();
-    setInterval(updatePlantHealth, 5 * 60 * 1000);
-});
-
-// Save automation settings
-document.getElementById('automation-settings-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const config = {
-        schedules: {
-            image_capture: {
-                enabled: true,
-                interval_minutes: parseInt(document.getElementById('image-capture-interval').value)
-            }
-        },
-        triggers: {
-            plant_health: {
-                enabled: document.getElementById('health-monitoring-enabled').checked,
-                thresholds: {
-                    min_green_percent: parseInt(document.getElementById('min-green-percent').value)
-                }
-            }
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          loadRecentSnapshots();
+          alert('Snapshot taken!');
+        } else {
+          alert('Error taking snapshot: ' + data.message);
         }
+      })
+      .catch(error => alert('Error: ' + error));
+  }
+
+  function loadRecentSnapshots() {
+    fetch('/snapshots')
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          const list = document.getElementById('snapshots-list');
+          list.innerHTML = '';
+          data.snapshots.forEach(snapshot => {
+            const item = document.createElement('a');
+            item.href = `/snapshots/${snapshot}`;
+            item.className = 'list-group-item list-group-item-action';
+            item.textContent = snapshot;
+            list.appendChild(item);
+          });
+        }
+      });
+  }
+
+  let timelapseActive = false;
+  function toggleTimelapse() {
+    const btn = document.getElementById('timelapseBtn');
+    // Example: send a request to start/stop timelapse if you have an endpoint.
+    // For now, just toggle button appearance.
+    if (!timelapseActive) {
+      // Start timelapse (this could also call a route, e.g., /start_timelapse)
+      timelapseActive = true;
+      btn.textContent = 'Stop Timelapse';
+      btn.classList.replace('btn-secondary', 'btn-danger');
+      alert('Timelapse started!');
+    } else {
+      // Stop timelapse (this could also call a route, e.g., /stop_timelapse)
+      timelapseActive = false;
+      btn.textContent = 'Start Timelapse';
+      btn.classList.replace('btn-danger', 'btn-secondary');
+      alert('Timelapse stopped!');
+    }
+  }
+
+  // Automation Settings Save
+  document.getElementById('automation-settings-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const config = {
+      schedules: {
+        image_capture: {
+          enabled: true,
+          interval_minutes: parseInt(document.getElementById('image-capture-interval').value)
+        },
+        timelapse: {
+          interval_minutes: parseInt(document.getElementById('timelapse-interval').value),
+          duration_hours: parseInt(document.getElementById('timelapse-duration').value)
+        }
+      },
+      triggers: {
+        plant_health: {
+          enabled: document.getElementById('health-monitoring-enabled').checked,
+          thresholds: {
+            min_green_percent: parseInt(document.getElementById('min-green-percent').value)
+          }
+        }
+      }
     };
-    
     fetch('/automation/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
     })
     .then(response => response.json())
     .then(data => {
-        if (data.status === 'success') {
-            alert('Settings saved successfully!');
-        } else {
-            alert('Error saving settings: ' + data.message);
-        }
+      if (data.status === 'success') {
+        alert('Settings saved successfully!');
+      } else {
+        alert('Error saving settings: ' + data.message);
+      }
     });
-});
+  });
+
+  // Periodic update of plant health
+  function updatePlantHealth() {
+    fetch('/automation/status')
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success' && data.plant_health) {
+          const health = data.plant_health;
+          document.getElementById('green-percent').textContent = health.green_percentage.toFixed(1);
+          document.getElementById('last-analysis').textContent = new Date(health.timestamp).toLocaleString();
+          const coverage = health.green_percentage;
+          let status = 'Good';
+          let color = 'text-success';
+          if (coverage < 30) {
+            status = 'Poor';
+            color = 'text-danger';
+          } else if (coverage < 60) {
+            status = 'Fair';
+            color = 'text-warning';
+          }
+          document.getElementById('plant-health-card').innerHTML = `
+            <p class="${color}">Status: ${status}</p>
+            <p>Green Coverage: ${coverage.toFixed(1)}%</p>
+            <small class="text-muted">Updated: ${new Date(health.timestamp).toLocaleString()}</small>
+          `;
+        }
+      });
+  }
+  // Update plant health every 5 minutes
+  updatePlantHealth();
+  setInterval(updatePlantHealth, 5 * 60 * 1000);
+
+  // On page load, load snapshots
+  document.addEventListener('DOMContentLoaded', function() {
+    loadRecentSnapshots();
+  });
 </script>
 </body>
 </html>
+
 
 
