@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Main application entry point.
-This app uses Flask with modular blueprints for sensors, pumps, camera, events, and config.
+This app uses Flask with modular blueprints for sensors, pumps, camera, events, config, and automation.
 """
 
 from flask import Flask, render_template
@@ -10,6 +10,7 @@ from blueprints.pumps import pumps_bp
 from blueprints.camera import camera_bp
 from blueprints.events import events_bp
 from blueprints.config import config_bp
+from blueprints.automation import automation_bp
 import json
 import os
 
@@ -41,15 +42,14 @@ app.register_blueprint(pumps_bp, url_prefix="/pumps")
 app.register_blueprint(camera_bp, url_prefix="/camera")
 app.register_blueprint(events_bp, url_prefix="/events")
 app.register_blueprint(config_bp, url_prefix="/config")
+app.register_blueprint(automation_bp, url_prefix="/automation")
 
-# Main dashboard route (uses index.html)
+# Main dashboard route (renders dashboard.html)
 @app.route("/")
 def index():
-    return render_template("index.html", config=GLOBAL_CONFIG)
+    return render_template("dashboard.html", config=GLOBAL_CONFIG)
 
 if __name__ == "__main__":
     load_config()
     app.run(host="0.0.0.0", port=5001, debug=True)
-
-
 
