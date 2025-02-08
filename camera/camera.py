@@ -26,12 +26,12 @@ class PlantCamera:
             if not os.path.exists(directory):
                 os.makedirs(directory)
 
-        # Aggressively clean up any processes that may be using the camera
+        # Cleanup any processes that might be using the camera
         cleanup_commands = [
             "sudo pkill -f 'python3.*camera'",
             "sudo pkill -f 'libcamera'",
             "sudo pkill -f 'rpicam'",
-            # Removed: "sudo systemctl restart picamera2" (service not found)
+            # Removed the picamera2 service restart because it was not found
             "sudo rm -f /dev/shm/camera*"
         ]
         for cmd in cleanup_commands:
@@ -41,17 +41,14 @@ class PlantCamera:
             except Exception as e:
                 print(f"Cleanup command failed: {e}")
 
-        time.sleep(2)  # Give extra time for cleanup
-
-        # Initialize the camera
+        time.sleep(2)  # Extra delay for cleanup
         self._initialized = self.setup_camera()
 
     def setup_camera(self):
-        """Initialize the IMX500 Camera with optimal settings"""
+        """Initialize the camera with the specified resolution and settings."""
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                # Clean up any existing instance
                 if self._picam:
                     try:
                         self._picam.stop()
@@ -60,19 +57,16 @@ class PlantCamera:
                         print(f"Error closing previous camera instance: {e}")
                     self._picam = None
 
-                time.sleep(2)  # Give camera time to release
-
-                # Initialize a new camera instance
+                time.sleep(2)
                 self._picam = Picamera2()
 
-                # Create a preview configuration with the desired resolution and format
                 config = self._picam.create_preview_configuration(
                     main={"size": self.resolution, "format": "RGB888"},
                     buffer_count=2
                 )
                 self._picam.configure(config)
 
-                # Set additional camera controls (approximately 30 FPS)
+                # Set camera controls (aiming for ~30 FPS)
                 self._picam.set_controls({
                     "FrameDurationLimits": (33333, 33333),
                     "AeEnable": True,
@@ -94,10 +88,10 @@ class PlantCamera:
                             print(f"Error closing camera: {e}")
                         self._picam = None
                     return False
-                time.sleep(2)  # Wait before retrying
+                time.sleep(2)
 
     def start(self):
-        """Start the camera and begin the frame capture loop"""
+        """Start the camera capture loop."""
         if self._running:
             return False
 
@@ -119,7 +113,7 @@ class PlantCamera:
             return False
 
     def stop(self):
-        """Stop the camera"""
+        """Stop the camera."""
         self._running = False
         if self._picam:
             try:
@@ -130,43 +124,51 @@ class PlantCamera:
                 print(f"Error stopping camera: {e}")
 
     def _capture_loop(self):
-        """Continuously capture frames for streaming"""
+        """Continuously capture frames for the live feed."""
         frame_count = 0
         while self._running:
             try:
                 frame = self._picam.capture_array()
-                with self._lock:
-                    self._last_frame = frame
-                frame_count += 1
-                if frame_count % 100 == 0:
-                    print(f"Captured {frame_count} frames")
-                time.sleep(0.033)  # Approximately 30 FPS
+                if frame is not None:
+                    with self._lock:
+                        self._last_frame = frame
+                    frame_count += 1
+                    if frame_count % 100 == 0:
+                        print(f"Captured {frame_count} frames")
+                else:
+                    print("No frame returned by capture_array()")
+                time.sleep(0.033)  # ~30 FPS
             except Exception as e:
                 print(f"Error in capture loop: {str(e)}")
                 time.sleep(1)
 
     def get_frame(self):
-        """Retrieve the latest frame as JPEG bytes"""
+        """Return the latest frame encoded as JPEG."""
         if self._last_frame is None:
             return None
 
         try:
             with self._lock:
                 frame = self._last_frame.copy()
-
-            # Convert from BGR to RGB if needed
+            # Convert color if necessary (Picamera2 usually returns BGR)
             if len(frame.shape) == 3 and frame.shape[2] == 3:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
             ret, jpeg = cv2.imencode('.jpg', frame)
-            return jpeg.tobytes() if ret else None
+            if ret:
+                return jpeg.tobytes()
+            else:
+                print("Failed to encode frame as JPEG")
+                return None
         except Exception as e:
             print(f"Error encoding frame: {str(e)}")
             return None
 
     def take_snapshot(self, filename=None):
-        """Take and save a high-quality snapshot"""
+        """Capture a high-quality snapshot and save it."""
         try:
+            if not self._picam:
+                print("Camera instance is not available for snapshot.")
+                return None
             if filename is None:
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f'snapshot_{timestamp}.jpg'
@@ -179,7 +181,7 @@ class PlantCamera:
             return None
 
     def start_timelapse(self, interval_minutes=60, duration_hours=24):
-        """Start a timelapse capture thread"""
+        """Start capturing snapshots at intervals for a timelapse."""
         def _timelapse_loop():
             end_time = datetime.now() + timedelta(hours=duration_hours)
             while datetime.now() < end_time and self._running:
@@ -195,7 +197,7 @@ class PlantCamera:
         print(f"Started timelapse: {interval_minutes}min intervals for {duration_hours}hrs")
 
     def analyze_plant_health(self, frame=None):
-        """Perform a basic plant health analysis based on color thresholds"""
+        """Perform basic plant health analysis using color thresholds."""
         try:
             if frame is None:
                 with self._lock:
@@ -216,14 +218,17 @@ class PlantCamera:
             return None
 
 def generate_frames(camera):
-    """Generator function for Flask video streaming"""
+    """Generator for streaming JPEG frames to the web client."""
     while True:
         try:
             frame = camera.get_frame()
             if frame is not None:
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            time.sleep(0.033)  # Approximately 30 FPS
+            else:
+                # If no frame is available, pause briefly.
+                time.sleep(0.1)
         except Exception as e:
             print(f"Error generating frames: {str(e)}")
             time.sleep(1)
+
