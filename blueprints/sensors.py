@@ -17,7 +17,8 @@ def get_sensors_data():
         "ec": ec
     })
 
-@sensors_bp.route("/dashboard")
+# Override the endpoint name so that url_for('sensors.dashboard') works.
+@sensors_bp.route("/dashboard", endpoint="dashboard")
 def sensors_dashboard():
     return render_template("sensors.html")
 
