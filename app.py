@@ -230,9 +230,6 @@ if __name__ == "__main__":
     camera = PlantCamera(snapshot_dir='data/snapshots')
     camera.start()
 
-    # Initialize automation controller
-    automation = AutomationController(sensor_obj, camera, pump_controller=None)
-    automation.start()
 
     # Start sensor logging thread
     def run_logger():
