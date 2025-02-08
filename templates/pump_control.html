@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Pump Control</h1>
+<form id="pump-control-form" method="POST" action="{{ url_for('pumps.dose_pump_route') }}">
+  <div class="mb-3">
+    <label for="pump_name" class="form-label">Select Pump</label>
+    <select class="form-select" id="pump_name" name="pump_name">
+      <option value="pH_up">pH_up</option>
+      <option value="pH_down">pH_down</option>
+      <option value="nutrientA">nutrientA</option>
+      <option value="nutrientB">nutrientB</option>
+      <option value="nutrientC">nutrientC</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="seconds" class="form-label">Duration (seconds)</label>
+    <input type="number" class="form-control" id="seconds" name="seconds" value="5">
+  </div>
+  <button type="submit" class="btn btn-success">Run Pump</button>
+</form>
+{% endblock %}

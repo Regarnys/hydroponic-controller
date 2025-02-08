@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Camera Feed</h1>
+<div>
+  <img src="{{ url_for('camera.video_feed') }}" alt="Live Camera Feed" class="img-fluid">
+</div>
+<form method="POST" action="{{ url_for('camera.take_snapshot') }}">
+  <button type="submit" class="btn btn-primary mt-2">Take Snapshot</button>
+</form>
+<div class="mt-3">
+  <h3>Recent Snapshots</h3>
+  <!-- Dynamically list snapshots as needed -->
+</div>
+{% endblock %}
