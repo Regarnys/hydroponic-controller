@@ -19,7 +19,7 @@ from data.logger import (
 from sensors import SensorReader
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 from camera.camera import PlantCamera, generate_frames
-from controller.automation import AutomationController
+
 
 app = Flask(__name__)
 
