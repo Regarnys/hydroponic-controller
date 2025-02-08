@@ -31,7 +31,6 @@ class PlantCamera:
             "sudo pkill -f 'python3.*camera'",
             "sudo pkill -f 'libcamera'",
             "sudo pkill -f 'rpicam'",
-            # Removed the picamera2 service restart because it was not found
             "sudo rm -f /dev/shm/camera*"
         ]
         for cmd in cleanup_commands:
@@ -91,7 +90,7 @@ class PlantCamera:
                 time.sleep(2)
 
     def start(self):
-        """Start the camera capture loop."""
+        """Start the camera capture loop (for MJPEG streaming)."""
         if self._running:
             return False
 
@@ -124,7 +123,7 @@ class PlantCamera:
                 print(f"Error stopping camera: {e}")
 
     def _capture_loop(self):
-        """Continuously capture frames for the live feed."""
+        """Continuously capture frames for MJPEG streaming."""
         frame_count = 0
         while self._running:
             try:
@@ -137,20 +136,20 @@ class PlantCamera:
                         print(f"Captured {frame_count} frames")
                 else:
                     print("No frame returned by capture_array()")
-                time.sleep(0.033)  # ~30 FPS
+                time.sleep(0.033)  # Approximately 30 FPS
             except Exception as e:
                 print(f"Error in capture loop: {str(e)}")
                 time.sleep(1)
 
     def get_frame(self):
-        """Return the latest frame encoded as JPEG."""
+        """Return the latest frame encoded as JPEG (for MJPEG streaming)."""
         if self._last_frame is None:
             return None
 
         try:
             with self._lock:
                 frame = self._last_frame.copy()
-            # Convert color if necessary (Picamera2 usually returns BGR)
+            # Convert color if necessary (Picamera2 returns BGR by default)
             if len(frame.shape) == 3 and frame.shape[2] == 3:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             ret, jpeg = cv2.imencode('.jpg', frame)
@@ -164,20 +163,26 @@ class PlantCamera:
             return None
 
     def take_snapshot(self, filename=None):
-        """Capture a high-quality snapshot and save it."""
-        try:
-            if not self._picam:
-                print("Camera instance is not available for snapshot.")
+        """
+        Capture a snapshot by saving the last captured frame to disk.
+        This avoids using capture_file() which may not work while the camera
+        is continuously streaming.
+        """
+        with self._lock:
+            if self._last_frame is None:
+                print("No frame available for snapshot.")
                 return None
-            if filename is None:
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f'snapshot_{timestamp}.jpg'
-            filepath = os.path.join(self.snapshot_dir, filename)
-            self._picam.capture_file(filepath)
+            frame = self._last_frame.copy()
+        if filename is None:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'snapshot_{timestamp}.jpg'
+        filepath = os.path.join(self.snapshot_dir, filename)
+        success = cv2.imwrite(filepath, frame)
+        if success:
             print(f"Snapshot saved to {filepath}")
             return filepath
-        except Exception as e:
-            print(f"Error taking snapshot: {str(e)}")
+        else:
+            print("Failed to write snapshot to file.")
             return None
 
     def start_timelapse(self, interval_minutes=60, duration_hours=24):
@@ -186,39 +191,30 @@ class PlantCamera:
             end_time = datetime.now() + timedelta(hours=duration_hours)
             while datetime.now() < end_time and self._running:
                 try:
-                    filename = f'timelapse_{datetime.now().strftime("%Y%m%d_%H%M%S")}.jpg'
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f'timelapse_{timestamp}.jpg'
                     filepath = os.path.join(self.timelapse_dir, filename)
-                    self._picam.capture_file(filepath)
-                    print(f"Timelapse frame captured: {filename}")
+                    with self._lock:
+                        if self._last_frame is not None:
+                            frame = self._last_frame.copy()
+                        else:
+                            frame = None
+                    if frame is not None:
+                        success = cv2.imwrite(filepath, frame)
+                        if success:
+                            print(f"Timelapse snapshot saved to {filepath}")
+                        else:
+                            print("Failed to write timelapse snapshot to file.")
+                    else:
+                        print("No frame available for timelapse snapshot.")
                 except Exception as e:
                     print(f"Error in timelapse: {str(e)}")
                 time.sleep(interval_minutes * 60)
         threading.Thread(target=_timelapse_loop, daemon=True).start()
         print(f"Started timelapse: {interval_minutes}min intervals for {duration_hours}hrs")
 
-    def analyze_plant_health(self, frame=None):
-        """Perform basic plant health analysis using color thresholds."""
-        try:
-            if frame is None:
-                with self._lock:
-                    if self._last_frame is None:
-                        return None
-                    frame = self._last_frame.copy()
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            lower_green = np.array([35, 30, 30])
-            upper_green = np.array([85, 255, 255])
-            green_mask = cv2.inRange(hsv, lower_green, upper_green)
-            green_percent = (np.count_nonzero(green_mask) / green_mask.size) * 100
-            return {
-                'green_percentage': green_percent,
-                'timestamp': datetime.now().isoformat()
-            }
-        except Exception as e:
-            print(f"Error analyzing plant health: {str(e)}")
-            return None
-
 def generate_frames(camera):
-    """Generator for streaming JPEG frames to the web client."""
+    """Generator for streaming JPEG frames (MJPEG) to the web client."""
     while True:
         try:
             frame = camera.get_frame()
@@ -226,9 +222,9 @@ def generate_frames(camera):
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             else:
-                # If no frame is available, pause briefly.
                 time.sleep(0.1)
         except Exception as e:
             print(f"Error generating frames: {str(e)}")
             time.sleep(1)
+
 
