@@ -1,27 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Pump Events</title>
-</head>
-<body>
-<h1>Pump / System Events</h1>
-<table border="1">
-  <tr><th>Timestamp</th><th>Event</th><th>Details</th></tr>
-  {% for row in event_data %}
-    <tr>
-      <td>{{ row[0] }}</td>
-      <td>{{ row[1] }}</td>
-      <td>{{ row[2] }}</td>
-    </tr>
+{% extends "base.html" %}
+{% block content %}
+<h1>Event Summary</h1>
+{% if summary %}
+  {% for date, pumps in summary.items() %}
+    <h3>{{ date }}</h3>
+    <ul>
+      {% for pump, usage in pumps.items() %}
+        <li>{{ pump }}: {{ usage }} seconds</li>
+      {% endfor %}
+    </ul>
   {% endfor %}
-</table>
-<p><a href="{{ url_for('index') }}">Back to Home</a></p>
-{% if has_prev_page %}
-  <a href="{{ url_for('dashboard', page=(current_page-1)) }}" class="btn btn-secondary">Previous</a>
+{% else %}
+  <p>No events recorded.</p>
 {% endif %}
-{% if has_next_page %}
-  <a href="{{ url_for('dashboard', page=(current_page+1)) }}" class="btn btn-secondary">Next</a>
-{% endif %}
-</body>
-</html>
+{% endblock %}
