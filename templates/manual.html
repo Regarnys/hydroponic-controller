@@ -1,24 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Manual Pump Control</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
 <h1>Manual Pump Control</h1>
-<form method="POST" action="">
-    <label for="pump_name">Pump:</label>
-    <select name="pump_name" id="pump_name">
-      {% for p in pump_names %}
-        <option value="{{ p }}">{{ p }}</option>
-      {% endfor %}
-    </select>
-    <br><br>
-
-    <label for="run_seconds">Seconds to run:</label>
-    <input type="text" name="run_seconds" id="run_seconds">
-    <br><br>
-
-    <button type="submit">Run Pump</button>
+{% if message %}
+  <p style="color:blue;">{{ message }}</p>
+{% endif %}
+<form method="POST">
+  <label for="pump_name">Pump:</label>
+  <select name="pump_name" id="pump_name">
+    {% for p in pump_names %}
+      <option value="{{ p }}">{{ p }}</option>
+    {% endfor %}
+  </select>
+  <br><br>
+  <label for="run_seconds">Seconds to run:</label>
+  <input type="text" name="run_seconds" id="run_seconds">
+  <br><br>
+  <button type="submit">Run Pump</button>
 </form>
-</body>
-</html>
+<p><a href="{{ url_for('index') }}">Back to Home</a></p>
+{% endblock %}
