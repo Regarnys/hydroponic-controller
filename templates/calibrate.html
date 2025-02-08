@@ -1,14 +1,9 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Calibrate Pumps</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
 <h1>Calibrate Pump</h1>
 
 {% if message %}
-<p style="color:blue;">{{ message }}</p>
+  <p style="color:blue;">{{ message }}</p>
 {% endif %}
 
 <h2>Test Run</h2>
@@ -17,7 +12,7 @@
   <label>Pump:</label>
   <select name="pump_name">
     {% for p in pump_names %}
-    <option value="{{ p }}">{{ p }}</option>
+      <option value="{{ p }}">{{ p }}</option>
     {% endfor %}
   </select>
   <label>Seconds:</label>
@@ -31,7 +26,7 @@
   <label>Pump:</label>
   <select name="pump_name">
     {% for p in pump_names %}
-    <option value="{{ p }}">{{ p }}</option>
+      <option value="{{ p }}">{{ p }}</option>
     {% endfor %}
   </select>
   <label>Seconds (same used above):</label>
@@ -44,6 +39,6 @@
 <h3>Current Calibration</h3>
 <pre>{{ config['pump_calibration']|tojson }}</pre>
 
-<p><a href="{{ url_for('dashboard') }}">Back to Dashboard</a></p>
-</body>
-</html>
+<p><a href="{{ url_for('index') }}">Back to Dashboard</a></p>
+{% endblock %}
+
