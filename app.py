@@ -102,27 +102,6 @@ def serve_snapshot(filename):
     """Serve snapshot images"""
     return send_from_directory('data/snapshots', filename)
 
-# Automation Routes
-@app.route('/automation/status')
-def automation_status():
-    """Get automation status"""
-    return {
-        'status': 'success',
-        'config': automation.config,
-        'running': automation.running
-    }
-
-@app.route('/automation/config', methods=['POST'])
-def update_automation():
-    """Update automation configuration"""
-    try:
-        new_config = request.json
-        automation.config.update(new_config)
-        automation.save_config()
-        return {'status': 'success'}
-    except Exception as e:
-        return {'status': 'error', 'message': str(e)}
-
 @app.route("/dashboard", methods=["GET","POST"])
 def dashboard():
     """Your existing dashboard route with modifications"""
