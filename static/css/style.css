@@ -1,15 +1,14 @@
-/* Just an example of minimal styling. */
+/* static/css/style.css */
 body {
-  font-family: sans-serif;
-  margin: 20px;
+  background-color: #f8f9fa;
 }
-.green {
-  color: green;
+
+.navbar-brand {
+  font-weight: bold;
 }
-table {
-  border-collapse: collapse;
-  margin-top: 10px;
+
+.container {
+  margin-top: 20px;
 }
-th, td {
-  padding: 6px 10px;
-}
+
+/* Add additional custom styles as needed */
