@@ -1,16 +1,7 @@
-<!-- File: templates/events_summary.html -->
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Event Summary</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
+{% extends "base.html" %}
+{% block content %}
 <h1>Event Summary</h1>
-
-<!-- Table listing daily usage by pump -->
-<table border="1">
+<table class="table table-bordered">
   <tr>
     <th>Date</th>
     {% for pump in all_pumps %}
@@ -21,34 +12,25 @@
     <tr>
       <td>{{ day_data.date }}</td>
       {% for pump in all_pumps %}
-        <td>
-          {{ day_data.usage.get(pump, 0) }}
-        </td>
+        <td>{{ day_data.usage.get(pump, 0) }}</td>
       {% endfor %}
     </tr>
   {% endfor %}
 </table>
 
-<!-- Stacked bar chart -->
 <h2>Daily Usage (Stacked Bar)</h2>
 <canvas id="eventsChart" width="600" height="300"></canvas>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   let aggregatedData = {{ aggregated_data|tojson }};
   let allPumps = {{ all_pumps|tojson }};
-
-  // X-axis: list of dates
   let labels = aggregatedData.map(d => d.date);
-
-  // Each pump is one dataset
   let colors = ['blue','green','purple','orange','red','gray','teal','navy'];
   let datasets = [];
-
   allPumps.forEach((pumpName, idx) => {
     let dataArray = aggregatedData.map(dayObj => {
       return dayObj.usage[pumpName] || 0;
     });
-
     datasets.push({
       label: pumpName,
       data: dataArray,
@@ -57,7 +39,6 @@
       borderWidth: 1
     });
   });
-
   let ctx = document.getElementById("eventsChart").getContext('2d');
   let eventsChart = new Chart(ctx, {
     type: 'bar',
@@ -74,7 +55,6 @@
     }
   });
 </script>
-
 <p><a href="{{ url_for('index') }}">Back to Home</a></p>
-</body>
-</html>
+{% endblock %}
+
