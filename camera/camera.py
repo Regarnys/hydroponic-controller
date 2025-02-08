@@ -12,22 +12,22 @@ class PlantCamera:
     def __init__(self, snapshot_dir='data/snapshots',
                  timelapse_dir='data/timelapse',
                  resolution=(1920, 1080)):
+        """
+        Initialize the camera for on-demand still capture.
+        This version does NOT run a continuous capture loop.
+        """
         self.snapshot_dir = snapshot_dir
         self.timelapse_dir = timelapse_dir
         self.resolution = resolution
         self._picam = None
-        self._running = False
-        self._lock = threading.Lock()
-        self._last_frame = None
-        self._last_valid_frame = None  # To keep the last successfully captured frame
         self._initialized = False
 
-        # Create directories if they don't exist
-        for directory in [snapshot_dir, timelapse_dir]:
+        # Create directories if they don't exist.
+        for directory in [self.snapshot_dir, self.timelapse_dir]:
             if not os.path.exists(directory):
                 os.makedirs(directory)
 
-        # Cleanup any processes that might be using the camera
+        # Optionally, run any cleanup commands if needed.
         cleanup_commands = [
             "sudo pkill -f 'python3.*camera'",
             "sudo pkill -f 'libcamera'",
@@ -41,145 +41,46 @@ class PlantCamera:
             except Exception as e:
                 print(f"Cleanup command failed: {e}")
 
-        time.sleep(2)  # Extra delay for cleanup
-        self._initialized = self.setup_camera()
+        time.sleep(2)  # Give extra time for cleanup.
+        self.setup_camera()
 
     def setup_camera(self):
-        """Initialize the camera with the specified resolution and settings."""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                if self._picam:
-                    try:
-                        self._picam.stop()
-                        self._picam.close()
-                    except Exception as e:
-                        print(f"Error closing previous camera instance: {e}")
-                    self._picam = None
-
-                time.sleep(2)
-                self._picam = Picamera2()
-
-                config = self._picam.create_preview_configuration(
-                    main={"size": self.resolution, "format": "RGB888"},
-                    buffer_count=2
-                )
-                self._picam.configure(config)
-
-                # Set camera controls (aiming for ~30 FPS)
-                self._picam.set_controls({
-                    "FrameDurationLimits": (33333, 33333),
-                    "AeEnable": True,
-                    "AwbEnable": True,
-                    "FrameRate": 30.0
-                })
-
-                print("Camera initialized successfully")
-                return True
-
-            except Exception as e:
-                print(f"Camera initialization attempt {attempt + 1} failed: {str(e)}")
-                if attempt == max_retries - 1:
-                    print("Failed to initialize camera after multiple attempts")
-                    if self._picam:
-                        try:
-                            self._picam.close()
-                        except Exception as e:
-                            print(f"Error closing camera: {e}")
-                        self._picam = None
-                    return False
-                time.sleep(2)
-
-    def start(self):
-        """Start the camera capture loop (for MJPEG streaming)."""
-        if self._running:
-            return False
-
-        if not self._initialized or not self._picam:
-            print("Camera not properly initialized. Attempting to reinitialize...")
-            self._initialized = self.setup_camera()
-            if not self._initialized:
-                print("Failed to initialize camera")
-                return False
-
+        """
+        Initialize the camera for on-demand still capture.
+        This uses a still configuration.
+        """
         try:
-            self._picam.start()
-            self._running = True
-            threading.Thread(target=self._capture_loop, daemon=True).start()
-            return True
+            self._picam = Picamera2()
+            config = self._picam.create_still_configuration(
+                main={"size": self.resolution, "format": "RGB888"}
+            )
+            self._picam.configure(config)
+            print("Camera initialized successfully for on-demand capture")
+            self._initialized = True
         except Exception as e:
-            print(f"Error starting camera: {e}")
-            self._running = False
-            return False
+            print(f"Camera initialization failed: {e}")
+            self._initialized = False
 
-    def stop(self):
-        """Stop the camera."""
-        self._running = False
-        if self._picam:
-            try:
-                self._picam.stop()
-                self._picam.close()
-                self._picam = None
-            except Exception as e:
-                print(f"Error stopping camera: {e}")
-
-    def _capture_loop(self):
-        """Continuously capture frames for MJPEG streaming."""
-        frame_count = 0
-        while self._running:
-            try:
-                frame = self._picam.capture_array()
-                if frame is not None:
-                    with self._lock:
-                        self._last_frame = frame
-                        self._last_valid_frame = frame  # Update last valid frame
-                    frame_count += 1
-                    if frame_count % 100 == 0:
-                        print(f"Captured {frame_count} frames")
-                else:
-                    print("No frame returned by capture_array()")
-                time.sleep(0.033)  # Approximately 30 FPS
-            except Exception as e:
-                print(f"Error in capture loop: {str(e)}")
-                time.sleep(1)
-
-    def get_frame(self):
-        """Return the latest frame encoded as JPEG (for MJPEG streaming)."""
-        if self._last_frame is None:
-            return None
-
+    def capture_single_frame(self):
+        """
+        Capture and return a single frame from the camera.
+        This method is used on demand when a snapshot is requested.
+        """
         try:
-            with self._lock:
-                frame = self._last_frame.copy()
-            # Convert color if necessary (Picamera2 returns BGR by default)
-            if len(frame.shape) == 3 and frame.shape[2] == 3:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            ret, jpeg = cv2.imencode('.jpg', frame)
-            if ret:
-                return jpeg.tobytes()
-            else:
-                print("Failed to encode frame as JPEG")
-                return None
+            frame = self._picam.capture_array()
+            return frame
         except Exception as e:
-            print(f"Error encoding frame: {str(e)}")
+            print(f"Error capturing frame: {e}")
             return None
 
     def take_snapshot(self, filename=None):
         """
-        Capture a snapshot by saving the last valid captured frame to disk.
-        If no valid frame is available, try to fall back to the most recent frame.
+        Capture a snapshot on demand and save it as a JPEG file in the snapshots folder.
         """
-        with self._lock:
-            frame = None
-            if self._last_valid_frame is not None:
-                frame = self._last_valid_frame.copy()
-            elif self._last_frame is not None:
-                print("No valid frame available; falling back to _last_frame.")
-                frame = self._last_frame.copy()
-            else:
-                print("No valid frame available for snapshot.")
-                return None
-
+        frame = self.capture_single_frame()
+        if frame is None:
+            print("No frame available for snapshot.")
+            return None
         if filename is None:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'snapshot_{timestamp}.jpg'
@@ -193,46 +94,52 @@ class PlantCamera:
             return None
 
     def start_timelapse(self, interval_minutes=60, duration_hours=24):
-        """Start capturing snapshots at intervals for a timelapse."""
+        """
+        Start a timelapse capture that takes snapshots at defined intervals.
+        This runs in a background thread.
+        """
         def _timelapse_loop():
             end_time = datetime.now() + timedelta(hours=duration_hours)
-            while datetime.now() < end_time and self._running:
-                try:
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = f'timelapse_{timestamp}.jpg'
-                    filepath = os.path.join(self.timelapse_dir, filename)
-                    with self._lock:
-                        frame = None
-                        if self._last_valid_frame is not None:
-                            frame = self._last_valid_frame.copy()
-                        elif self._last_frame is not None:
-                            frame = self._last_frame.copy()
-                    if frame is not None:
-                        success = cv2.imwrite(filepath, frame)
-                        if success:
-                            print(f"Timelapse snapshot saved to {filepath}")
-                        else:
-                            print("Failed to write timelapse snapshot to file.")
-                    else:
-                        print("No frame available for timelapse snapshot.")
-                except Exception as e:
-                    print(f"Error in timelapse: {str(e)}")
+            while datetime.now() < end_time:
+                self.take_snapshot()
                 time.sleep(interval_minutes * 60)
         threading.Thread(target=_timelapse_loop, daemon=True).start()
-        print(f"Started timelapse: {interval_minutes}min intervals for {duration_hours}hrs")
+        print(f"Started timelapse: {interval_minutes} minute intervals for {duration_hours} hours")
+
+    # Optionally, if you need a live preview for your dashboard,
+    # you can use the methods below to capture a frame on demand.
+    def get_frame(self):
+        """
+        Capture a single frame and return it encoded as JPEG.
+        This can be used to provide a live preview (MJPEG) on the dashboard.
+        """
+        frame = self.capture_single_frame()
+        if frame is None:
+            return None
+        try:
+            # (Optionally, convert color if needed. Here we assume the frame is RGB.)
+            ret, jpeg = cv2.imencode('.jpg', frame)
+            if ret:
+                return jpeg.tobytes()
+            else:
+                print("Failed to encode frame as JPEG")
+                return None
+        except Exception as e:
+            print(f"Error encoding frame: {e}")
+            return None
 
 def generate_frames(camera):
-    """Generator for streaming JPEG frames (MJPEG) to the web client."""
+    """
+    Generator function for MJPEG live preview.
+    Each time a frame is requested, capture it on demand.
+    (Note: This may have lower frame rate performance compared to a continuous loop.)
+    """
     while True:
-        try:
-            frame = camera.get_frame()
-            if frame is not None:
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            else:
-                time.sleep(0.1)
-        except Exception as e:
-            print(f"Error generating frames: {str(e)}")
-            time.sleep(1)
+        frame = camera.get_frame()
+        if frame is not None:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        else:
+            time.sleep(0.1)
 
 
