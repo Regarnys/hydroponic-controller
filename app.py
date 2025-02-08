@@ -20,7 +20,6 @@ from sensors import SensorReader
 from controller.dosing_logic import simple_ph_control, simple_ec_control
 from camera.camera import PlantCamera, generate_frames
 
-
 app = Flask(__name__)
 
 # Global config (thresholds + pump_calibration)
@@ -43,34 +42,109 @@ def save_config():
     with open(CONFIG_FILE, "w") as f:
         json.dump(GLOBAL_CONFIG, f, indent=2)
 
-# Existing aggregator functions remain the same
+# --- Aggregation Functions ---
+
 def aggregate_event_data():
-    """Your existing aggregate_event_data function"""
-    # ... [Keep your existing implementation]
-    pass
+    """Aggregate event data from hydro_events.csv.
+       Returns a dictionary mapping dates (YYYY-MM-DD) to a dictionary of pump usage.
+       Expected CSV columns: timestamp, pump, usage_amount, ...
+    """
+    events_csv = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
+    aggregator = {}
+    if os.path.exists(events_csv):
+        with open(events_csv, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)  # Skip header if present
+            for row in reader:
+                if len(row) < 3:
+                    continue
+                ts_str, pump, usage_str = row[:3]
+                try:
+                    usage = float(usage_str)
+                except ValueError:
+                    continue
+                try:
+                    dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                    date_str = dt.strftime("%Y-%m-%d")
+                except Exception:
+                    continue
+                if date_str not in aggregator:
+                    aggregator[date_str] = {}
+                if pump not in aggregator[date_str]:
+                    aggregator[date_str][pump] = 0
+                aggregator[date_str][pump] += usage
+    return aggregator
 
 def aggregate_sensor_data_for_today():
-    """Your existing aggregate_sensor_data_for_today function"""
-    # ... [Keep your existing implementation]
-    pass
+    """Aggregate sensor data for today's readings from sensor_data.csv.
+       Returns a dictionary with daily minimum and maximum pH values.
+       Expected CSV columns: timestamp, sensor_name, value, ...
+    """
+    sensor_csv = os.path.join(os.path.dirname(__file__), "data", "sensor_data.csv")
+    today = datetime.now().strftime("%Y-%m-%d")
+    ph_values = []
+    if os.path.exists(sensor_csv):
+        with open(sensor_csv, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            for row in reader:
+                if len(row) < 3:
+                    continue
+                ts_str, sensor_name, val_str = row[:3]
+                try:
+                    dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    continue
+                if dt.strftime("%Y-%m-%d") == today and sensor_name == "pH":
+                    try:
+                        ph_value = float(val_str)
+                        ph_values.append(ph_value)
+                    except ValueError:
+                        continue
+    if ph_values:
+        return {"pH_min": min(ph_values), "pH_max": max(ph_values)}
+    else:
+        return {"pH_min": None, "pH_max": None}
 
 def build_usage_bar_data(event_aggregator, all_pumps):
-    """Your existing build_usage_bar_data function"""
-    # ... [Keep your existing implementation]
-    pass
+    """Builds data for a usage bar chart.
+       Returns a dict with a sorted list of dates and for each pump, a list of usage values.
+    """
+    dates = sorted(event_aggregator.keys())
+    usage_data = {}
+    for pump in all_pumps:
+        usage_data[pump] = []
+        for date in dates:
+            usage = event_aggregator.get(date, {}).get(pump, 0)
+            usage_data[pump].append(usage)
+    return {"dates": dates, "usage_data": usage_data}
 
 def get_recent_interesting_events():
-    """Your existing get_recent_interesting_events function"""
-    # ... [Keep your existing implementation]
-    pass
+    """Returns the 5 most recent events from hydro_events.csv."""
+    events_csv = os.path.join(os.path.dirname(__file__), "data", "hydro_events.csv")
+    interesting = []
+    if os.path.exists(events_csv):
+        with open(events_csv, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            events = list(reader)
+            events.sort(key=lambda x: datetime.strptime(x[0], "%Y-%m-%d %H:%M:%S") if len(x) > 0 else datetime.min, reverse=True)
+            interesting = events[:5]
+    return interesting
 
 # Utility to dose volume in mL
 def dose_volume(pump_name, ml_amount):
-    """Your existing dose_volume function"""
-    # ... [Keep your existing implementation]
-    pass
+    """Dose a specified volume (in mL) using the specified pump."""
+    try:
+        dose_pump(pump_name, ml_amount)
+        log_event("pump", f"Manually dosed {ml_amount} mL using pump {pump_name}")
+        return True
+    except Exception as e:
+        log_event("pump", f"Error dosing pump {pump_name}: {e}")
+        return False
 
-# Camera Routes
+# --- Camera Routes ---
+
 @app.route('/video_feed')
 def video_feed():
     """Video streaming route"""
@@ -102,25 +176,35 @@ def serve_snapshot(filename):
     """Serve snapshot images"""
     return send_from_directory('data/snapshots', filename)
 
-@app.route("/dashboard", methods=["GET","POST"])
+# --- Main Dashboard Route ---
+
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
-    """Your existing dashboard route with modifications"""
+    """Dashboard route displaying sensor and event data"""
     global GLOBAL_CONFIG
     message = ""
 
     if request.method == "POST":
-        action = request.form.get("action","")
-
-        # Your existing POST handlers remain the same
+        action = request.form.get("action", "")
         if action == "manual_pump":
-            # ... [Keep your existing implementation]
-            pass
+            # Example: manually dose a pump with 10 mL
+            pump_name = request.form.get("pump_name")
+            if pump_name:
+                success = dose_volume(pump_name, 10)
+                message = f"Manual pump dose {'succeeded' if success else 'failed'} for pump {pump_name}."
         elif action == "volume_dose":
-            # ... [Keep your existing implementation]
-            pass
-        # ... [Keep other existing handlers]
+            # Example: dose a pump with a specified volume
+            pump_name = request.form.get("pump_name")
+            ml_amount = request.form.get("ml_amount")
+            try:
+                ml_amount = float(ml_amount)
+                success = dose_volume(pump_name, ml_amount)
+                message = f"Volume dosing {'succeeded' if success else 'failed'} for pump {pump_name}."
+            except ValueError:
+                message = "Invalid volume specified."
+        # Add additional POST handlers as needed
 
-    # Gather data for tabs
+    # Gather sensor data for charts
     ph_data = []
     ec_data = []
     sensor_csv = os.path.join(os.path.dirname(__file__), "data", "sensor_data.csv")
@@ -131,7 +215,7 @@ def dashboard():
             for row in reader:
                 if len(row) < 3:
                     continue
-                ts_str, sensor_name, val_str = row
+                ts_str, sensor_name, val_str = row[:3]
                 try:
                     val_f = float(val_str)
                 except ValueError:
@@ -140,18 +224,16 @@ def dashboard():
                     ph_data.append([ts_str, val_f])
                 elif sensor_name == "EC":
                     ec_data.append([ts_str, val_f])
-    
     ph_data = ph_data[-20:]  # Show only last 20 readings
     ec_data = ec_data[-20:]
 
-    # Get other data for dashboard
-    event_aggregator = aggregate_event_data()
+    # Get event data
+    event_aggregator = aggregate_event_data() or {}
     all_pumps = set()
     for date_str, usage_map in event_aggregator.items():
         for p in usage_map.keys():
             all_pumps.add(p)
     all_pumps = sorted(all_pumps)
-
     usage_bar_data = build_usage_bar_data(event_aggregator, all_pumps)
     
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -175,16 +257,15 @@ def dashboard():
             rr = csv.reader(f)
             header = next(rr, None)
             event_rows = list(rr)
-
     event_rows.sort(key=lambda x: datetime.strptime(x[0], "%Y-%m-%d %H:%M:%S") if len(x) > 0 else datetime.min, reverse=True)
     total_events = len(event_rows)
-    start_i = (page-1)*page_size
+    start_i = (page - 1) * page_size
     end_i = start_i + page_size
     event_rows = event_rows[start_i:end_i]
     has_next_page = (end_i < total_events)
     has_prev_page = (page > 1)
 
-    # Usage summary
+    # Build a simple usage summary for the dashboard
     summary_list = []
     for date_str in sorted(event_aggregator.keys()):
         summary_list.append({
@@ -223,15 +304,14 @@ if __name__ == "__main__":
     init_sensor_log()
     load_config()
 
-    # Create sensor
+    # Create sensor object
     sensor_obj = SensorReader(i2c_bus=1, ph_address=0x63, ec_address=0x64)
 
-    # Initialize camera
+    # Initialize and start the camera
     camera = PlantCamera(snapshot_dir='data/snapshots')
     camera.start()
 
-
-    # Start sensor logging thread
+    # Start sensor logging in a separate thread
     def run_logger():
         start_continuous_logging(sensor_obj, interval=10)
     t = threading.Thread(target=run_logger, daemon=True)
@@ -239,5 +319,6 @@ if __name__ == "__main__":
 
     # Run Flask
     app.run(host="0.0.0.0", port=5001, debug=True)
+
 
 
