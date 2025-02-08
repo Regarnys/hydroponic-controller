@@ -46,8 +46,7 @@ class PlantCamera:
 
     def setup_camera(self):
         """
-        Initialize the camera for on-demand still capture.
-        This uses a still configuration.
+        Initialize the camera for on-demand still capture using a still configuration.
         """
         try:
             self._picam = Picamera2()
@@ -61,10 +60,17 @@ class PlantCamera:
             print(f"Camera initialization failed: {e}")
             self._initialized = False
 
+    def start(self):
+        """
+        Dummy start method for compatibility with app.py.
+        For on-demand capture, no continuous loop is required.
+        """
+        return True
+
     def capture_single_frame(self):
         """
         Capture and return a single frame from the camera.
-        This method is used on demand when a snapshot is requested.
+        This method is used on demand when a snapshot or preview is requested.
         """
         try:
             frame = self._picam.capture_array()
@@ -106,18 +112,16 @@ class PlantCamera:
         threading.Thread(target=_timelapse_loop, daemon=True).start()
         print(f"Started timelapse: {interval_minutes} minute intervals for {duration_hours} hours")
 
-    # Optionally, if you need a live preview for your dashboard,
-    # you can use the methods below to capture a frame on demand.
     def get_frame(self):
         """
         Capture a single frame and return it encoded as JPEG.
         This can be used to provide a live preview (MJPEG) on the dashboard.
+        Note: On-demand capture for live preview may have lower frame rates.
         """
         frame = self.capture_single_frame()
         if frame is None:
             return None
         try:
-            # (Optionally, convert color if needed. Here we assume the frame is RGB.)
             ret, jpeg = cv2.imencode('.jpg', frame)
             if ret:
                 return jpeg.tobytes()
@@ -131,8 +135,8 @@ class PlantCamera:
 def generate_frames(camera):
     """
     Generator function for MJPEG live preview.
-    Each time a frame is requested, capture it on demand.
-    (Note: This may have lower frame rate performance compared to a continuous loop.)
+    Each time a frame is requested, it is captured on demand.
+    (This may yield a lower frame rate compared to a continuous capture loop.)
     """
     while True:
         frame = camera.get_frame()
