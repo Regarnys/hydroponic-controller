@@ -169,4 +169,63 @@ class PlantCamera:
             print(f"Error taking snapshot: {str(e)}")
             return None
 
-    # Rest of your methods remain the same (start_timelapse, analyze_plant_health, etc.)
+    def start_timelapse(self, interval_minutes=60, duration_hours=24):
+        """Start a timelapse capture thread"""
+        def _timelapse_loop():
+            end_time = datetime.now() + timedelta(hours=duration_hours)
+            while datetime.now() < end_time and self._running:
+                try:
+                    filename = f'timelapse_{datetime.now().strftime("%Y%m%d_%H%M%S")}.jpg'
+                    filepath = os.path.join(self.timelapse_dir, filename)
+                    self._picam.capture_file(filepath)
+                    print(f"Timelapse frame captured: {filename}")
+                except Exception as e:
+                    print(f"Error in timelapse: {str(e)}")
+                time.sleep(interval_minutes * 60)
+
+        threading.Thread(target=_timelapse_loop, daemon=True).start()
+        print(f"Started timelapse: {interval_minutes}min intervals for {duration_hours}hrs")
+
+    def analyze_plant_health(self, frame=None):
+        """Basic plant health analysis using color thresholds"""
+        try:
+            if frame is None:
+                with self._lock:
+                    if self._last_frame is None:
+                        return None
+                    frame = self._last_frame.copy()
+
+            # Convert to HSV for better color analysis
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+            # Define green color range
+            lower_green = np.array([35, 30, 30])
+            upper_green = np.array([85, 255, 255])
+
+            # Create mask for green pixels
+            green_mask = cv2.inRange(hsv, lower_green, upper_green)
+
+            # Calculate percentage of green pixels
+            green_percent = (np.count_nonzero(green_mask) / green_mask.size) * 100
+
+            return {
+                'green_percentage': green_percent,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            print(f"Error analyzing plant health: {str(e)}")
+            return None
+
+
+def generate_frames(camera):
+    """Generator function for Flask video streaming"""
+    while True:
+        try:
+            frame = camera.get_frame()
+            if frame is not None:
+                yield (b'--frame\r\n'
+                      b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            time.sleep(0.033)  # ~30 FPS
+        except Exception as e:
+            print(f"Error generating frames: {str(e)}")
+            time.sleep(1)  # Wait longer if there's an error
