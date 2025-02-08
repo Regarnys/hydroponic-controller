@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Hydroponic Data</h1>
+
+<h2>Raw Sensor Table</h2>
+<table class="table table-bordered">
+  <tr>
+    <th>Timestamp</th>
+    <th>Sensor</th>
+    <th>Value</th>
+  </tr>
+  {% for row in sensor_data %}
+    <tr>
+      <td>{{ row[0] }}</td>
+      <td>{{ row[1] }}</td>
+      <td>{{ row[2] }}</td>
+    </tr>
+  {% endfor %}
+</table>
+
+<h2>pH Over Time</h2>
+<canvas id="phChart" width="600" height="300"></canvas>
+
+<h2>EC Over Time</h2>
+<canvas id="ecChart" width="600" height="300"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  let sensorData = {{ sensor_data|tojson }};
+  
+  // Filter data for pH and EC readings separately.
+  let phData = sensorData.filter(r => r[1] === "pH");
+  let ecData = sensorData.filter(r => r[1] === "EC");
+
+  // Prepare labels and values for pH.
+  let phLabels = phData.map(r => r[0]);  // timestamps
+  let phValues = phData.map(r => parseFloat(r[2]));
+
+  // Prepare labels and values for EC.
+  let ecLabels = ecData.map(r => r[0]);  // timestamps
+  let ecValues = ecData.map(r => parseFloat(r[2]));
+
+  // pH Chart
+  let phCtx = document.getElementById("phChart").getContext('2d');
+  let phChart = new Chart(phCtx, {
+    type: 'line',
+    data: {
+      labels: phLabels,
+      datasets: [{
+        label: 'pH',
+        data: phValues,
+        borderColor: 'blue',
+        backgroundColor: 'rgba(0, 0, 255, 0.1)',
+        fill: true,
+        tension: 0.1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          suggestedMin: 4,
+          suggestedMax: 8
+        }
+      }
+    }
+  });
+
+  // EC Chart
+  let ecCtx = document.getElementById("ecChart").getContext('2d');
+  let ecChart = new Chart(ecCtx, {
+    type: 'line',
+    data: {
+      labels: ecLabels,
+      datasets: [{
+        label: 'EC',
+        data: ecValues,
+        borderColor: 'green',
+        backgroundColor: 'rgba(0, 255, 0, 0.1)',
+        fill: true,
+        tension: 0.1
+      }]
+    },
+    options: {
+      scales: {
+        y: {
+          // Adjust suggested min/max based on your expected EC range
+          suggestedMin: 0,
+          suggestedMax: 5
+        }
+      }
+    }
+  });
+</script>
+
+<p>
+  <a href="{{ url_for('events.events_dashboard') }}">Events</a> | 
+  <a href="{{ url_for('pumps.manual_control') }}">Manual Pump Control</a> | 
+  <a href="{{ url_for('config.config_page') }}">Config</a> | 
+  <a href="{{ url_for('automation.update_automation_config') }}">Auto Dosing Test</a>
+</p>
+{% endblock %}
