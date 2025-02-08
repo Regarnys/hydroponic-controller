@@ -58,6 +58,7 @@ class PlantCamera:
             self._initialized = True
         except Exception as e:
             print(f"Camera initialization failed: {e}")
+            self._picam = None
             self._initialized = False
 
     def start(self):
@@ -70,8 +71,14 @@ class PlantCamera:
     def capture_single_frame(self):
         """
         Capture and return a single frame from the camera.
-        This method is used on demand when a snapshot or preview is requested.
+        If the camera instance is unavailable, attempt to reinitialize it.
         """
+        if self._picam is None:
+            print("Camera not initialized, attempting reinitialization...")
+            self.setup_camera()
+            if self._picam is None:
+                print("Reinitialization failed.")
+                return None
         try:
             frame = self._picam.capture_array()
             return frame
