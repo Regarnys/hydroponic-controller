@@ -27,9 +27,23 @@ class PlantCamera:
             if not os.path.exists(directory):
                 os.makedirs(directory)
 
-        # Kill any existing camera processes
-        os.system("sudo pkill -f 'python3.*camera'")
-        time.sleep(2)  # Give time for cleanup
+        # More aggressive cleanup of camera processes
+        cleanup_commands = [
+            "sudo pkill -f 'python3.*camera'",
+            "sudo pkill -f 'libcamera'",
+            "sudo pkill -f 'rpicam'",
+            "sudo systemctl restart picamera2",
+            "sudo rm -f /dev/shm/camera*"  # Remove any shared memory files
+        ]
+        
+        for cmd in cleanup_commands:
+            try:
+                os.system(cmd)
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"Cleanup command failed: {e}")
+
+        time.sleep(2)  # Give extra time for cleanup
 
         # Initialize camera
         self._initialized = self.setup_camera()
