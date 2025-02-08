@@ -1,7 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head><title>Configuration</title></head>
-<body>
+{% extends "base.html" %}
+{% block content %}
 <h1>System Config</h1>
 <form method="POST">
   <label>pH Min: <input type="text" name="ph_min" value="{{ config.ph_min }}"></label><br><br>
@@ -9,6 +7,5 @@
   <label>EC Min: <input type="text" name="ec_min" value="{{ config.ec_min }}"></label><br><br>
   <button type="submit">Save</button>
 </form>
-</body>
-</html>
-
+<p><a href="{{ url_for('index') }}">Back to Home</a></p>
+{% endblock %}
