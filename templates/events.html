@@ -1,19 +1,15 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Pump Events</title>
-</head>
-<body>
-    <h1>Pump / System Events</h1>
-    <table border="1">
-        <tr><th>Timestamp</th><th>Event</th><th>Details</th></tr>
-        {% for row in event_data %}
-          <tr>
-            <td>{{ row[0] }}</td>
-            <td>{{ row[1] }}</td>
-            <td>{{ row[2] }}</td>
-          </tr>
-        {% endfor %}
-    </table>
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<h1>Pump / System Events</h1>
+<table class="table table-bordered">
+  <tr><th>Timestamp</th><th>Event</th><th>Details</th></tr>
+  {% for row in event_data %}
+    <tr>
+      <td>{{ row[0] }}</td>
+      <td>{{ row[1] }}</td>
+      <td>{{ row[2] }}</td>
+    </tr>
+  {% endfor %}
+</table>
+<p><a href="{{ url_for('index') }}">Back to Home</a></p>
+{% endblock %}
