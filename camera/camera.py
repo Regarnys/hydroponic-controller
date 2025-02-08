@@ -19,6 +19,7 @@ class PlantCamera:
         self._running = False
         self._lock = threading.Lock()
         self._last_frame = None
+        self._last_valid_frame = None  # Keep the last good frame
         self._initialized = False
 
         # Create directories if they don't exist
@@ -131,6 +132,7 @@ class PlantCamera:
                 if frame is not None:
                     with self._lock:
                         self._last_frame = frame
+                        self._last_valid_frame = frame  # Save the most recent valid frame
                     frame_count += 1
                     if frame_count % 100 == 0:
                         print(f"Captured {frame_count} frames")
@@ -164,15 +166,15 @@ class PlantCamera:
 
     def take_snapshot(self, filename=None):
         """
-        Capture a snapshot by saving the last captured frame to disk.
-        This avoids using capture_file() which may not work while the camera
-        is continuously streaming.
+        Capture a snapshot by saving the last valid captured frame to disk.
+        This avoids using capture_file() (which may not work while streaming).
         """
         with self._lock:
-            if self._last_frame is None:
-                print("No frame available for snapshot.")
+            if self._last_valid_frame is None:
+                print("No valid frame available for snapshot.")
                 return None
-            frame = self._last_frame.copy()
+            # Use the last valid frame instead of _last_frame
+            frame = self._last_valid_frame.copy()
         if filename is None:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'snapshot_{timestamp}.jpg'
@@ -195,8 +197,8 @@ class PlantCamera:
                     filename = f'timelapse_{timestamp}.jpg'
                     filepath = os.path.join(self.timelapse_dir, filename)
                     with self._lock:
-                        if self._last_frame is not None:
-                            frame = self._last_frame.copy()
+                        if self._last_valid_frame is not None:
+                            frame = self._last_valid_frame.copy()
                         else:
                             frame = None
                     if frame is not None:
@@ -226,5 +228,4 @@ def generate_frames(camera):
         except Exception as e:
             print(f"Error generating frames: {str(e)}")
             time.sleep(1)
-
 
