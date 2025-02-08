@@ -36,3 +36,4 @@ def config_page():
             message = f"Error updating config: {e}"
     config = load_config()
     return render_template("config.html", config=config, message=message)
+
